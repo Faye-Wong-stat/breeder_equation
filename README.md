@@ -1,3 +1,3 @@
 # breeder_equation
-# path
+## path
 "/Users/fangyiwang/Documents/GitHub/breeder_equation"
