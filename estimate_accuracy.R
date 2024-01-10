@@ -167,7 +167,8 @@ accuracy_table_three <- data.frame(fold="three folds",
 for (i in 1:ncol(Phenotyping_Poplar)){
   for (j in 1:3){
     tryCatch({
-      selected = three_folds[[j]][!is.na(Phenotyping_Poplar[three_folds[[j]], colnames(Phenotyping_Poplar)[i]])]
+      selected = three_folds[[j]][!is.na(Phenotyping_Poplar[three_folds[[j]], 
+                                                            colnames(Phenotyping_Poplar)[i]])]
       
       Y <- data.frame(ID=rownames(Genotyping_Poplar[selected, ]), 
                       obs=Phenotyping_Poplar[selected, colnames(Phenotyping_Poplar)[i]])
@@ -231,11 +232,14 @@ traits <- unique(accuracy_table_long$trait)
 
 pdf(paste("estimate_accuracy/plots/", "accuracy.pdf", sep=""), width=10)
 for (i in 1:length(traits)){
-  print(ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i], ], aes(x=type, y=accuracy, fill=type)) + 
+  print(ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i], ], 
+               aes(x=type, y=accuracy, fill=type)) + 
     geom_boxplot() + 
     facet_wrap(~fold) + 
-    scale_fill_hue(labels=c("g_acc_pear"="genomic accuracy Pearson", "g_acc_gcor"="genomic accuracy adjusted", 
-                             "p_acc_pear"="phenomic accuracy Pearson", "p_acc_gcor"="phenomic accuracy adjusted")) + 
+    scale_fill_hue(labels=c("g_acc_pear"="genomic accuracy Pearson", 
+                            "g_acc_gcor"="genomic accuracy adjusted", 
+                            "p_acc_pear"="phenomic accuracy Pearson", 
+                            "p_acc_gcor"="phenomic accuracy adjusted")) + 
     theme_minimal_grid(font_size=10) + 
     theme(axis.title.x = element_blank(),
           axis.text.x = element_blank(),
@@ -251,13 +255,13 @@ for (i in 1:length(traits)){
 }
 dev.off()
 
-p1 <- ggplot(accuracy_table_long, aes(x=type, y=accuracy)) + 
-  geom_boxplot() + 
-  theme_minimal_grid(font_size=10) 
-
-save_plot(paste("estimate_accuracy/plots/", "accuracy.pdf", sep=""), 
-          p1, 
-          base_width=6.5)
+# p1 <- ggplot(accuracy_table_long, aes(x=type, y=accuracy)) + 
+#   geom_boxplot() + 
+#   theme_minimal_grid(font_size=10) 
+# 
+# save_plot(paste("estimate_accuracy/plots/", "accuracy.pdf", sep=""), 
+#           p1, 
+#           base_width=6.5)
 
   
   
