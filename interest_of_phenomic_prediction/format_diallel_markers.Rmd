@@ -1,0 +1,618 @@
+---
+title: "Format diallel markers before performing imputation"
+author: "Charlotte Brault"
+date: "`r format(Sys.time(), '%d/%m/%Y %H:%M:%S')`"
+lang: "en"
+colorlinks: true
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: TRUE
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: TRUE
+urlcolor: blue
+---
+
+<!--
+This R chunk is used to set up some options.
+-->
+```{r setup, include=FALSE}
+##`
+## https://github.com/vspinu/polymode/issues/147#issuecomment-399745611
+R.v.maj <- as.numeric(R.version$major)
+R.v.min.1 <- as.numeric(strsplit(R.version$minor, "\\.")[[1]][1])
+if(R.v.maj < 2 || (R.v.maj == 2 && R.v.min.1 < 15))
+  stop("requires R >= 2.15", call.=FALSE)
+
+suppressPackageStartupMessages(library(knitr))
+opts_chunk$set(echo=TRUE, warning=TRUE, message=TRUE, cache=FALSE, fig.align="center")
+opts_knit$set(progress=TRUE, verbose=TRUE)
+```
+
+
+# Overview
+
+This script is part of **across-population genomic prediction in grapevine** project. 
+
+```{r overview}
+project.name <- "phenomic_pred"
+project.dir <- "~/phenomic_pred"
+ if(Sys.info()["user"] %in% c("brault", "charlotte")){
+  project.dir <- paste0("~/work/", project.name)
+} 
+stopifnot(file.exists(project.dir))
+data.dir <- paste0(project.dir, "/data")
+stopifnot(file.exists(data.dir))
+results.dir <- paste0(project.dir, "/results")
+stopifnot(file.exists(results.dir))
+```
+
+This document will also require external packages to be available:
+```{r load_pkg}
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggpubr))
+suppressPackageStartupMessages(library(readxl))
+suppressPackageStartupMessages(library(network))
+suppressPackageStartupMessages(library(ade4))
+suppressPackageStartupMessages(library(Matrix))
+suppressPackageStartupMessages(library(apercu))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(scrm))
+suppressPackageStartupMessages(library(rutilstimflutre))
+suppressPackageStartupMessages(library(progress))
+```
+
+
+This R chunk is used to assess how much time it takes to execute the R code in this document until the end:
+```{r time_0}
+t0 <- proc.time()
+```
+
+
+# Load last vcf data
+
+Downloaded last file from Tello et al (2019) before genetic mapping.
+
+## Extract genotypic field
+
+Extract genotypic field for each population from the last file.
+
+Pop 31 : Syrah x Pinot Noir
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP31.filtered.gq40.env.sansdoublon3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3331 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP31 --extract-FORMAT-info GT
+```
+File saved as POP31.GT.FORMAT
+
+
+Pop 32 : Cabernat-Sauv x Pinot
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP32.filtered.gq40.env.noreplicate2.chr0.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3332 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP32 --extract-FORMAT-info GT
+```
+
+
+Pop 33: Grenache x Pinot
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP33.filtered.gq40.env.noreplicate2.chr0.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3333 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP33 --extract-FORMAT-info GT
+```
+
+
+Pop 34: Terret x Pinot
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP34.filtered.gq40.env.noreplicate3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3334 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP34 --extract-FORMAT-info GT
+```
+
+Pop 35: Cabernet-Sauv x Syrah
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP35.filtered.gq40.env.noreplicate3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3335 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP35 --extract-FORMAT-info GT
+```
+
+Pop 36: Grenache x Syrah
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP36.filtered.gq40.env.noreplicate3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3336 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP36 --extract-FORMAT-info GT
+```
+
+Pop 37: Terret x Syrah
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP37.filtered.gq40.env.noreplicate3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3337 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP37 --extract-FORMAT-info GT
+```
+
+Pop 38: Grenache x Cabernet-Sauv
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP38.filtered.gq40.env.noreplicate3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3338 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP38 --extract-FORMAT-info GT
+```
+
+
+Pop 39: Terret x Cabernet-Sauv
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP39.filtered.gq40.env.noreplicate3.chr0.recode.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3339 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP39 --extract-FORMAT-info GT
+```
+
+Pop 40: Terret x Grenache
+```{bash}
+vcftools --vcf ~/work/phenomic_pred/data/genotypic/diallel_GBS/Variant_callingPOP40.filtered.gq40.env.noreplicate2.chr0.vcf --keep ~/work/phenomic_pred/data/genotypic/diallel_GBS/genotypes_popMtp3340 --max-alleles 2 --out ~/work/phenomic_pred/data/genotypic/diallel_GBS/POP40 --extract-FORMAT-info GT
+```
+
+
+## Convert genotypic field to gene dose
+
+```{bash}
+for p in "POP31" "POP32" "POP33" "POP34" "POP35" "POP36" "POP37" "POP38" "POP39" "POP40"
+  do
+  sed -e 's:0/0:0:g' -e 's:0/1:1:g' -e 's:1/1:2:g' -e '/.\/./d' ~/work/phenomic_pred/data/genotypic/diallel_GBS/${p}.GT.FORMAT > ~/work/phenomic_pred/data/genotypic/diallel_GBS/${p}_genedose.txt
+done
+```
+
+
+```{bash}
+for p in "POP31" "POP32" "POP33" "POP34" "POP35" "POP36" "POP37" "POP38" "POP39" "POP40"
+  do
+  sed -e 's:0/0:0:g' -e 's:0/1:1:g' -e 's:1/1:2:g' -e 's:.\/.:NA:g' ~/work/phenomic_pred/data/genotypic/diallel_GBS/${p}.GT.FORMAT > ~/work/phenomic_pred/data/genotypic/diallel_GBS/${p}_genedose.txt
+done
+```
+
+## Concatene chromosome name and position
+
+```{bash}
+for p in "POP31" "POP32" "POP33" "POP34" "POP35" "POP36" "POP37" "POP38" "POP39" "POP40"
+  do
+  sed -i 's:\t:_:' ~/work/phenomic_pred/data/genotypic/diallel_GBS/${p}_genedose.txt
+done
+```
+
+
+
+# Control parent genotypes
+
+## Define parents and crosses
+
+```{r define_cross_par}
+pops <- paste0("POP", c(31:40))
+p2fs <- paste0(data.dir,"/genotypic/diallel_GBS/",pops,".GT.FORMAT")
+parents <- c("ABVd005c", "AAVd005c", # S
+             "ABVd003bc", "ABVd003f", #PN
+             "AAVd004d", "AAVd004za", # TN
+             "AAVd001bd","ABVd001e", # CS
+             "AAVd002d", "ABVd002d") # G
+
+parent.conv <- list("S"=c("ABVd005c", "AAVd005c"),
+                     "PN"=c("ABVd003bc", "ABVd003f"),
+                     "TN"=c("AAVd004d", "AAVd004za"),
+                     "CS"=c("AAVd001bd","ABVd001e"),
+                     "G"=c("AAVd002d", "ABVd002d"))
+
+par <- c("S","G","TN","PN","CS")
+all.cross <- c("SxPN","CSxPN","GxPN","TNxPN","CSxS","GxS","TNxS","GxCS","TNxCS","TNxG")
+parent.cross <- list("S"=c("SxPN","CSxS","GxS","TNxS"),
+                     "PN"=c("SxPN","CSxPN","GxPN","TNxPN"),
+                     "TN"=c("TNxPN","TNxS","TNxCS","TNxG"),
+                     "CS"=c("CSxPN","CSxS","GxCS","TNxCS"),
+                     "G"=c("GxPN","GxS","GxCS","TNxG"))
+```
+
+## Count number of version of parents at each marker position
+
+Each parent is present in genotypic file for each cross. Verify that parent genotype is the same for all crosses and keep one genotype (in `chrom_pos_all` list). 
+
+```{r count nb version parent genotypes}
+p2f <- paste0(results.dir,"/geno_diallel/diallel_list_parent_genotypes.Rdata")
+chrom_pos_all <- list()
+gt <- list()
+if(!file.exists(p2f)){
+  for(p in par){
+    # Load all genotypic data from that parent
+    par.AAB <- parent.conv[[p]]
+    cross.par <- parent.cross[[p]]
+    stopifnot(length(cross.par) == 4)
+    gt <- list()
+    for(j in 1:4){
+      cross <- cross.par[[j]]
+      num.cross <- which(all.cross == cross) + 30
+      gt[[j]] <- read.table(file=paste0(data.dir, "/genotypic/diallel_GBS/POP",num.cross,".GT.FORMAT"),
+                            sep="\t", header=TRUE, stringsAsFactors=FALSE, na.strings="./.")
+      col2sel <- colnames(gt[[j]])[colnames(gt[[j]]) %in% par.AAB]
+      gt[[j]] <- gt[[j]][,c("CHROM","POS",col2sel)]
+      gt[[j]]$CHROM_POS <- paste0(gt[[j]]$CHROM,"_",gt[[j]]$POS)
+    }
+    lapply(gt, dim)
+    
+    ## Combine genotypic field for all progenies
+    gt.all.mrk <- full_join(gt[[1]],gt[[2]], by="CHROM_POS") %>%
+      full_join(.,gt[[3]],by="CHROM_POS") %>%
+      full_join(.,gt[[4]],by="CHROM_POS")
+    
+    stopifnot(!any(is.na(gt.all.mrk$CHROM_POS)))
+    # Select columns "CHROM_POS" and parent genotypes v1, v2, v3 and v4
+    gt.all.mrk <- gt.all.mrk[,c(4,3,7,10,13)]
+    rownames(gt.all.mrk) <- gt.all.mrk$CHROM_POS ; gt.all.mrk$CHROM_POS <- NULL
+    colnames(gt.all.mrk) <- c("geno_v1","geno_v2","geno_v3","geno_v4")
+    head(gt.all.mrk)
+    # Remove lines with only NAs
+    gt.all.mrk <- gt.all.mrk[rowSums(is.na(gt.all.mrk)) < ncol(gt.all.mrk),] 
+    # Count number of version for each marker (in row)
+    res <- apply(gt.all.mrk, 1, function(x) length(unique(x)[!is.na(unique(x))]))
+    # Print rows with more than one version
+    # print(res[res > 1])
+    print(length(res[res > 1]))
+    mrk2keep <- names(res)[res == 1]
+    res2 <-  unlist(apply(gt.all.mrk[mrk2keep,], 1, function(x) unique(x)[!is.na(unique(x))]))
+    # Save kept version for each marker
+    chrom_pos_all[[p]] <- res2[!is.na(res2)]
+    # Save markers with one version
+  }
+  lapply(chrom_pos_all, length)
+  ap(chrom_pos_all)
+  rm(gt)
+  save(chrom_pos_all, file=p2f)
+} else {
+  load(file=p2f) # in chrom_pos_all object
+}
+```
+
+
+# Manage segregation distorsion
+
+For each parent and polymorph marker ("0/1"), determine the segregation type for the progeny according to the alleles from the other parent.
+For example, for parent Grenache, marker *chr1_12345*, alleles **0/1**:
+
+* cross GxPN, PN=**0/1** at marker *chr1_12345*. 
+Then progeny is **0/0**; **0/1**; **1/1**. We can not determine provenance of the allele for **0/1**, we set these cases to NA. For the individuals left, the genotypic field is **0/0** and **1/1**. 
+
+* cross GxCS, CS="**0/0** at marker *chr1_12345*.
+Then, progeny is **0/0** or **0/1**..
+
+* cross GxTN, TN="**1/1** at marker *chr1_12345*.
+Then, progeny is **1/0** or **1/1** .
+
+We measure the theoretical proportion of the allele transmitted, that should be 50 % for each allele (0 and 1). We verify that hypothesis with a $\chi^2$ test. The number of individuals to which the parent had transmitted 0 and 1 is summed over the 4 crosses and the $\chi^2$ test is done. If the *p-value* is below 0.05, we save marker name in order to discard it later.
+
+## Detect segregated markers
+
+## Load genomic data for all crosses
+
+In `gt` list.
+```{r load gt}
+gt <- list()
+for(cross in all.cross){
+  num.cross <- which(all.cross == cross) + 30
+  p1 <- sapply(strsplit(cross, "x",fixed=TRUE),`[`, 1)
+  p2 <- sapply(strsplit(cross, "x",fixed=TRUE),`[`, 2)
+  par.AAB <- parent.conv[[p1]]
+  par.AAB2 <- parent.conv[[p2]]
+  gt[[cross]] <- read.table(file=paste0(data.dir, "/genotypic/diallel_GBS/POP",num.cross,".GT.FORMAT"),
+                            sep="\t", header=TRUE, stringsAsFactors=FALSE, na.strings="./.")
+  gt[[cross]]$CHROM_POS <- paste0(gt[[cross]]$CHROM,"_",gt[[cross]]$POS)
+  rownames(gt[[cross]]) <- gt[[cross]]$CHROM_POS
+  # Keep only segregation of the progeny
+  gt[[cross]] <- gt[[cross]][,!colnames(gt[[cross]]) %in%
+                               c(par.AAB, par.AAB2, "CHROM","POS","CHROM_POS")]
+}
+ap(gt)
+lapply(gt, dim)
+```
+
+
+## Estimate pvalue for all markers
+
+For each parent, marker for that parent, calculate number of times where allele **1** and allele **0** is transmitted in all cross. Apply a $\chi^2$ test to determine whether this marker is considered as a distorded one. 
+
+If the marker doesn't follow the correct segregation type, it is automatically considered as distorded.
+
+Save the $p$-value associated with the $\chi^2$ test in `mrk.pval`list.
+```{r estim_mrk.pval}
+mrk.pval <- list()
+p2f <- paste0(results.dir,"/geno_diallel/chi2_pval_distorded_markers.Rdata")
+
+if(!file.exists(p2f)){
+  for(p in par) {
+    write(p,stderr())
+    # find parent name with prefix AA or AB
+    par.AAB <- parent.conv[[p]]
+    cross.par <- parent.cross[[p]]
+    for (mrk in names(chrom_pos_all[[p]])){
+      n_0 <- 0 # count nb of case where allele 0 is transmitted
+      n_1 <- 0 # count nb of case where allele 1 is transmitted
+      
+      for(p2 in par[par != p]){
+        # find the cross with p and p2 as parent
+        cross <- intersect(parent.cross[[p]], parent.cross[[p2]])    
+        
+        # Consider only markers which segregate in the progeny & existing in p2 & in progeny & 
+        # correct segreg
+        if(chrom_pos_all[[p]][mrk] == "0/1" &  
+           mrk %in% names(chrom_pos_all[[p2]]) & chrom_pos_all[[p2]][mrk] %in% c("0/0","0/1","1/1") &
+           mrk %in% rownames(gt[[cross]])){
+          # if there is more than one allele => remove that marker
+          if(any(!gt[[cross]][mrk,] %in% c("0/0","0/1","1/1", NA))){
+            n_0 <- -10000 ; n_1 <- -10000 ; next
+          }
+          mrk.vec <- gt[[cross]][mrk, ]
+          if(chrom_pos_all[[p2]][mrk] == "0/1"){
+            mrk.vec <- mrk.vec[!mrk.vec == "0/1"]
+            mrk.vec <- mrk.vec[!is.na(mrk.vec)]
+            n_0 <- n_0 + length(mrk.vec[mrk.vec == "0/0"])
+            n_1 <- n_1 + length(mrk.vec[mrk.vec == "1/1"])
+            stopifnot(length(mrk.vec) ==length(mrk.vec[mrk.vec == "0/0"]) + 
+                        length(mrk.vec[mrk.vec == "1/1"]))
+            
+          } else if(chrom_pos_all[[p2]][mrk] == "0/0"){
+            if(any("1/1" %in% mrk.vec)){
+              n_0 <- -10000 ; n_1 <- -10000; next
+            }
+            mrk.vec <- mrk.vec[!is.na(mrk.vec)]
+            n_0 <- n_0 + length(mrk.vec[mrk.vec == "0/0"])
+            n_1 <- n_1 + length(mrk.vec[mrk.vec == "0/1"])
+            stopifnot(length(mrk.vec) ==length(mrk.vec[mrk.vec == "0/0"]) + 
+                        length(mrk.vec[mrk.vec == "0/1"]))
+            
+          } else if(chrom_pos_all[[p2]][mrk] == "1/1"){
+            if(any("0/0" %in% mrk.vec)){
+              n_0 <- -10000 ; n_1 <- -10000; next
+            }         
+            mrk.vec <- mrk.vec[!is.na(mrk.vec)]
+            n_0 <- n_0 + length(mrk.vec[mrk.vec == "0/1"])
+            n_1 <- n_1 + length(mrk.vec[mrk.vec == "1/1"])
+            stopifnot(length(mrk.vec) == length(mrk.vec[mrk.vec == "0/1"]) + 
+                        length(mrk.vec[mrk.vec == "1/1"]))
+          } 
+        } else next
+      } # end for p2
+      if(chrom_pos_all[[p]][mrk] == "0/1"){
+        if(n_0 > 0 & n_1 > 0){
+          pval <- chisq.test(c(n_0, n_1), p=c(0.5,0.5))$p.value
+        } else {
+          pval <- 0
+        }
+        mrk.pval[[p]] <- c(mrk.pval[[p]],pval)
+        names(mrk.pval[[p]])[length(mrk.pval[[p]])] <- mrk
+        stopifnot(names(mrk.pval[[p]])[length(mrk.pval[[p]])] %in% names(chrom_pos_all[[p]]))
+      }
+    } # end for mrk
+    stopifnot(all(names(mrk.pval[[p]]) %in% names(chrom_pos_all[[p]])))
+    save(mrk.pval,file=p2f)
+  } # end for parent
+} else {
+  load(file=p2f)
+}
+```
+
+
+
+## Explore distorded markers
+
+For each cross, plot the $p$-values.
+
+Save markers with $p$-value < 0.01 in `mrk.dist` list (one element per parent).
+```{r plot_mrk_pval}
+lapply(mrk.pval, length)
+for(p in names(mrk.pval)){
+  dat <- as.data.frame(mrk.pval[[p]])
+  colnames(dat) <- "pvalue"
+  pl <- ggplot(dat, aes(x=pvalue)) +
+    geom_histogram() + theme_bw() +
+    geom_vline(xintercept=0.05, color="firebrick") +
+    ggtitle(paste("Pvalue distribution for parent", p), 
+            subtitle=paste("Number of markers:", nrow(dat)))
+  plot(pl)
+}
+
+names.mrk <- lapply(mrk.pval, names)
+length(Reduce(intersect, names.mrk))
+
+mrk.dist <- lapply(mrk.pval, function(x) names(x)[x < 0.01])
+lapply(mrk.dist,length)
+length(Reduce(intersect, mrk.dist))
+```
+
+
+## Remove selected markers from parent and offspring genotypes
+
+Remove markers in `mrk.dist` from the list `chrom_pos_all` and from `gt`,i.e the genotypic values for each cross.
+
+Then, recode `gt` in 
+
+```{r remove_dist_mrk}
+p2f <- paste0(results.dir,"/geno_diallel/genomic_data_gene-dose_diallel-pops_dist-removed_no-imput_with-NAs.Rdata")
+if(!file.exists(p2f)){
+  gd <- list()
+  chrom_pos_all2 <- list()
+  for(p in par){
+    write(p, stderr())
+    # marker to remove for this parent
+    mrk2rem <- mrk.dist[[p]]
+    # remove these markers from parent genotype
+    chrom_pos_par_2keep <- chrom_pos_all[[p]][!names(chrom_pos_all[[p]]) %in% mrk2rem]
+    stopifnot(length(chrom_pos_all[[p]]) == length(chrom_pos_par_2keep) + length(mrk2rem))
+    chrom_pos_all2[[p]] <- chrom_pos_par_2keep
+    rm(chrom_pos_par_2keep, mrk2rem)
+    # remove these markers from offspring genotypes
+    cross.par <- parent.cross[[p]]
+    for(cross in cross.par){
+      write(cross, stderr())
+      gt_v2 <- gt[[cross]][!rownames(gt[[cross]]) %in% mrk.dist[[p]],]
+      gt[[cross]] <- gt_v2 
+      rm(gt_v2)
+      # recode into gene-dose: "0/0" => 0 / "0/1" => 1 / "1/1" => 2
+      gd[[cross]] <- apply(gt[[cross]], c(1,2), function(x) gsub("0/0",0,x))
+      gd[[cross]] <- apply(gd[[cross]], c(1,2), function(x) gsub("0/1",1,x))
+      gd[[cross]] <- apply(gd[[cross]], c(1,2), function(x) gsub("1/1",2,x))
+      gd[[cross]] <- apply(gd[[cross]], c(1,2), as.numeric)
+    }
+  }
+  lapply(gt, dim)
+  ap(gt)
+  ap(gd)
+  save(gd, file=p2f)
+} else{
+  load(file=p2f) # in gd object
+}
+rm(gt)
+lapply(gd, dim)
+ap(gd)
+rm(mrk.dist, mrk.names, mrk.pval, names.mrk)
+```
+
+
+
+# Create files for imputation
+
+Now that the distorded markers are removed, we will combine genotypic information all populations and parents together and create the pedigree file for running `FImpute3` software in the script `diallel_markers_fimpute.Rmd`.
+
+## Format offspring genotypes together
+
+Combine genotypic data from all crosses in a single table `all.mrk.pop`, missing markers in some crosses are filled with NA.
+```{r offspring together}
+gd.cross <- list()
+for(cross in names(gd)){
+  gd.cross[[cross]] <- as.data.frame(gd[[cross]])
+  gd.cross[[cross]]$mrk <- rownames(gd[[cross]])
+}
+ap(gd.cross)
+mrk.names <- lapply(gd.cross, rownames)
+
+all.mrk.pop <- full_join(gd.cross[[1]],gd.cross[[2]], by="mrk") %>%
+  full_join(.,gd.cross[[3]],by="mrk") %>%
+  full_join(.,gd.cross[[4]],by="mrk") %>%
+  full_join(.,gd.cross[[5]],by="mrk") %>%
+  full_join(.,gd.cross[[6]],by="mrk") %>%
+  full_join(.,gd.cross[[7]],by="mrk") %>%
+  full_join(.,gd.cross[[8]],by="mrk") %>%
+  full_join(.,gd.cross[[9]],by="mrk") %>%
+  full_join(.,gd.cross[[10]],by="mrk") 
+
+dim(all.mrk.pop)
+rownames(all.mrk.pop) <- all.mrk.pop$mrk
+mrk.names <- all.mrk.pop$mrk
+all.mrk.pop$mrk <- NULL
+ap(all.mrk.pop)
+```
+
+
+
+## Format parent genotype
+
+Do the same for parent genotypic data: recode genotypic information as numeric gene-dose and combine the list into one table `all.mrk.par`.
+```{r format parent geno}
+par.geno <- lapply(chrom_pos_all, as.data.frame, stringsAsFactors=FALSE)
+par.geno <- lapply(par.geno, function(y) apply(y, c(1,2), function(x) gsub("0/0",0,x)))
+par.geno <- lapply(par.geno, function(y) apply(y, c(1,2), function(x) gsub("0/1",1,x)))
+par.geno <- lapply(par.geno, function(y) apply(y, c(1,2), function(x) gsub("1/1",2,x)))
+par.geno <- lapply(par.geno, function(x) apply(x, c(1,2), as.numeric))
+par.geno <- lapply(par.geno, as.data.frame)
+ap(par.geno)
+par.geno.2save <- par.geno
+
+for(p in names(par.geno)){
+  colnames(par.geno[[p]]) <- p
+  par.geno[[p]]$mrk <- rownames(par.geno[[p]]) 
+}
+ap(par.geno)
+
+all.mrk.par <- full_join(par.geno[[1]],par.geno[[2]], by="mrk") %>%
+  full_join(.,par.geno[[3]],by="mrk") %>%
+  full_join(.,par.geno[[4]],by="mrk") %>%
+  full_join(.,par.geno[[5]],by="mrk")
+
+dim(all.mrk.par)
+all.mrk.par[1:7,]
+rownames(all.mrk.par) <- all.mrk.par$mrk
+all.mrk.par$mrk <- NULL
+ap(all.mrk.par)
+```
+
+## Add parent genotypes to offspring
+
+Combine offspring genotypes with parent genotypes for corresponding markers.
+
+```{r add_parent_genotypes_to_offspring}
+all.ind <- merge(x=all.mrk.pop, y=all.mrk.par, all=FALSE, by="row.names")
+ap(all.ind)
+all.ind <- all.mrk.pop
+all.ind[,colnames(all.mrk.par)] <- NA
+idx <- rownames(all.ind)[rownames(all.ind) %in% rownames(all.mrk.par)]
+all.ind[idx,c("S","G","TN","PN","CS")] <- all.mrk.par[idx,c("S","G","TN","PN","CS")]
+dim(all.ind)
+all.ind[1:8,615:629]
+mrk.names <- rownames(all.ind)
+ind.names <- colnames(all.ind)
+```
+
+## Remove markers from "chr0"
+
+Remove markers from chromosome unknown.
+```{r remove_chr0_markers}
+chr0 <- mrk.names[substr(mrk.names, 4,4) == 0]
+all.ind <- all.ind[substr(mrk.names, 4,4) != 0 ,]
+ap(all.ind)
+mrk.names <- rownames(all.ind)
+X.na <- t(all.ind)
+ap(X.na)
+save(X.na,file=paste0(results.dir,"/geno_diallel/genomic_data_gene-dose_diallel-all-pops_for_runFimpute.Rdata"))
+
+dim(X.na)
+miss.mrk <- apply(X.na, 2, function(x) sum(is.na(x)/629))
+summary(miss.mrk)
+hist(miss.mrk)
+afs.hwe <- estimSnpAf(X=X.na)
+X.na08 <- X.na[,names(miss.mrk)[miss.mrk < 0.8]]
+save(X.na08, file=paste0(results.dir,"/geno_diallel/genomic_data_gene-dose_",
+                         "diallel-all-pops_for_runFimpute_missdatmax-marker-0.8.Rdata"))
+```
+
+
+## Prepare pedigree table
+
+The pedigree should have 4 columns:
+
+* individual name
+
+* parent 1 (father)
+
+* parent 2 (mother)
+
+* sex (M or F)
+
+=> How to handle hermaphroditism in FImpute ?
+
+```{r}
+ped <- data.frame(ind.name=colnames(all.ind), mother=NA, father=NA, sex="F")
+for(cross in names(gd)){
+  ind.cross <- colnames(gd[[cross]])
+  ped[ped$ind.name %in% ind.cross, "mother"] <- sapply(strsplit(cross, "x",fixed=TRUE),`[`, 1)
+  ped[ped$ind.name %in% ind.cross, "father"] <- sapply(strsplit(cross, "x",fixed=TRUE),`[`, 2)
+}
+ped$gen <- 1
+ped$gen[ped$ind.name %in% c("S","G","CS","PN","TN")] <- 0
+plotPedigree(inds=ped$ind.name, mothers=ped$mother, fathers=ped$father,
+             generations=ped$gen, main="Pedigree of the controlled crosses")
+ped$gen <- NULL
+
+ped$sex <- "U"
+head(ped)
+tail(ped)
+ped$sex[ped$ind.name %in% c("S","PN")] <- "M"
+ped$sex[ped$ind.name %in% c("TN","CS","G")] <- "F"
+ped$father[ped$mother == "G" & ped$father == "CS"] <- NA
+ped$father[ped$mother == "S" & ped$father == "PN"] <- NA
+ped$father[ped$mother == "TN" & ped$father == "G"] <- NA
+unique(ped$father)
+write.table(ped, file=p2f, col.names=TRUE, row.names=FALSE, sep="\t")
+
+write.table(ped, file=paste0(results.dir,"/geno_diallel/pedigree_diallel_parents_FImpute.tsv"),
+            sep="\t", col.names=TRUE,row.names=FALSE)
+```
+
+
+
+Next step: perform imputation in `diallel_markers_fimpute.Rmd`.
+
+# Appendix
+
+```{r info}
+t1 <- proc.time(); t1 - t0
+print(sessionInfo(), locale=FALSE)
+```

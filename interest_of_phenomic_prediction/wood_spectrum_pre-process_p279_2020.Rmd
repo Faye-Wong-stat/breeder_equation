@@ -1,0 +1,1108 @@
+---
+title: "Wood spectrum pre-processing for p279 population in 2020"
+author: "V Segura, C Brault, M Ecarnot, L Le Cunff"
+date: "`r format(Sys.time(), '%d/%m/%Y %H:%M:%S')`"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
+lang: en
+colorlinks: yes
+urlcolor: blue
+---
+
+<!--
+This R chunk is used to set up some options.
+-->
+```{r setup, include=FALSE}
+##`
+## https://github.com/vspinu/polymode/issues/147#issuecomment-399745611
+R.v.maj <- as.numeric(R.version$major)
+R.v.min.1 <- as.numeric(strsplit(R.version$minor, "\\.")[[1]][1])
+if(R.v.maj < 2 || (R.v.maj == 2 && R.v.min.1 < 15))
+  stop("requires R >= 2.15", call.=FALSE)
+
+suppressPackageStartupMessages(library(knitr))
+opts_chunk$set(echo=TRUE, warning=TRUE, message=TRUE, cache=FALSE, fig.align="center")
+opts_knit$set(progress=TRUE, verbose=TRUE)
+```
+
+
+# Overview
+
+This project is about **phenomic prediction** i.e using Near Infra-Red Spectrum of biological tissues of different varieties to predict phenotypes instead of genotyping (Rincent et al, 2018).
+We took spectra on 3 grapevine populations:
+
+* bi-parental cross Syrah x Grenache, with 190 genotypes (SG)
+
+* a core collection of 279 genotypes (CC_279)
+
+* A p279 facility with 5 parents and about 700 genotypes (diallel) 
+
+In this script, we pre-process raw spectrum data.
+
+```{r overview}
+project.name <- "phenomic_pred"
+# if(Sys.info()["user"] %in% c("brault", "charlotte")){
+#   project.dir <- paste0("~/work/", project.name)
+# } 
+project.dir <- "~/breeder_equation_project/data/interest_of_phenomic_prediction_as_an_alternative_to_genomic_predition/script/phenomic_pred/"
+data.dir <- paste0(project.dir, "/data")
+results.dir <- paste0(project.dir, "/results")
+src.dir <- paste0(project.dir,"/src")
+```
+
+This document will also require external packages to be available:
+
+
+```{r load_pkg}
+suppressPackageStartupMessages(library(readxl))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(apercu))
+suppressPackageStartupMessages(library(RColorBrewer))
+suppressPackageStartupMessages(library(signal))
+suppressPackageStartupMessages(library(prospectr))
+suppressPackageStartupMessages(library(ade4))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(viridis))
+suppressPackageStartupMessages(library(VCA))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(rnirs)) # on GitHub
+suppressPackageStartupMessages(library(doParallel)) # for parallelization
+suppressPackageStartupMessages(library(foreach)) # for parallelization
+suppressPackageStartupMessages(library(snow)) # for creating cluster
+source(file = paste0(src.dir,"/PS_functions.R")) # for reading asd files
+source(paste0(src.dir,"/ortho.nirs.R")) # ortho.nirs
+
+nb.cores <- 5
+cl <- makeSOCKcluster(nb.cores)
+registerDoParallel(cl)
+```
+
+This R chunk is used to assess how much time it takes to execute the R code in this document until the end:
+```{r time_0}
+t0 <- proc.time()
+```
+
+
+# Load data
+
+## NIRS spectrum
+
+Wood spectra for p279 population and bloc A and B together.
+```{r read ASD, warning=FALSE}
+nirs <- asd_read_dir(directory=paste0(data.dir, "/spectra/p279_wood_2020"))
+dim(nirs) # 1896 x 2151
+ap(nirs)
+length(unique(rownames(nirs))) #1896
+```
+
+
+## Link to genotype information
+
+```{r load geno info}
+p2f <- paste0(data.dir, "/spectra/tableau manip NIRS-bois_final.xlsx")
+tools::md5sum(p2f)
+dat_geno <- read_xlsx(p2f,sheet = "CC279", na = "x")
+dat_geno <- as.data.frame(dat_geno)
+dim(dat_geno) # 510 x 12
+head(dat_geno)
+str(dat_geno)
+
+dat_geno2 <- reshape2::melt(dat_geno,id.vars=c("Pop", "Bloc", "Rang", "Plac",
+                                               "Id", "Pop-id", "Bl-Rg-Pl","Remarque"),
+                            variable.name="NIRS.origin", value.name="NIRS.nb")
+head(dat_geno2)
+dat_geno2$Id <- as.factor(dat_geno2$Id)
+dat_geno2$Bloc <- as.factor(dat_geno2$Bloc)
+dat_geno2$NIRS.nb <- as.numeric(dat_geno2$NIRS.nb)
+# remove missing values
+dat_geno2 <- dat_geno2[!is.na(dat_geno2$NIRS.nb),]
+```
+
+
+## Link NIRS to sample information
+
+```{r load sample info}
+sample.info <- data.frame("NIRS.id" = rownames(nirs),stringsAsFactors = FALSE)
+sample.info$NIRS.nb <- as.numeric(substring(sample.info$NIRS.id, 9))
+head(sample.info)
+
+summary(sample.info$NIRS.nb)  # min 1 max 1896
+summary(dat_geno2$NIRS.nb) # min 1 max 1896
+
+stopifnot(length(setdiff(sample.info$NIRS.nb, dat_geno2$NIRS.nb)) == 0,
+          length(setdiff(dat_geno2$NIRS.nb,sample.info$NIRS.nb)) == 0)
+
+length(unique(sample.info$NIRS.nb)) # 1896
+length(unique(dat_geno2$NIRS.nb)) # 1896
+stopifnot(!any(duplicated(sample.info$NIRS.nb)),
+          !any(duplicated(dat_geno2$NIRS.nb)),
+          nrow(dat_geno2) == length(unique(dat_geno2$NIRS.nb)))
+
+sample.info <- merge(sample.info, dat_geno2, by="NIRS.nb", all=FALSE) 
+dim(sample.info) # 1896 x 11
+identical(rownames(nirs), sample.info$NIRS.id)
+sample.info$Id_bloc <- paste0(sample.info$Id, "_", sample.info$Bloc)
+```
+
+
+## Identify controls and p279 subpopulations
+
+```{r controls identification}
+subpop <- as.data.frame(read_xlsx(paste0(data.dir, "/genotypic/CC279_GBS/origin_CC279.xlsx")))
+sample.info <- merge(sample.info, subpop, by.x="Id", by.y="code.intro", all=FALSE)
+
+infos_geno <- as.data.frame(read_xlsx(paste0(data.dir, "/genotypic/CC279_GBS/ids_279.xlsx"), na = ""))
+sample.info <- merge(sample.info, infos_geno, by.x="cultivar.number", by.y="CodeVar_TL")
+
+sample.infoCtl <- sample.info[sample.info$Id %in% c("TEMOIN"),]
+sample.infop279 <- sample.info[!sample.info$Id %in% c("TEMOIN"),]
+
+dim(sample.infoCtl)
+dim(sample.infop279)
+
+head(sample.infop279)
+```
+
+# Read spectrum
+
+## Plot raw spectrum
+
+```{r graph nirs, fig.height=4.5, fig.width = 7}
+matplot(x = as.integer(colnames(nirs)),
+        y = t(nirs),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - raw spectrum")
+```
+
+## Remove jump corresponding to change in detector
+
+We use the following function *adj_asd*:
+
+```{r spliceCorrection, fig.height=4.5, fig.width = 7}
+nirs <- adj_asd(Xi = nirs, iadj  = c(651, 1451))
+matplot(x = as.integer(colnames(nirs)),
+        y = t(nirs),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - Remove jump")
+```
+
+## Cut the end of the sprectrum (50 nm visible side)
+
+```{r spectra cut, fig.height=4.5, fig.width = 7}
+nirs.cut <- nirs[, as.integer(colnames(nirs)) >= 400]
+dim(nirs.cut)
+matplot(x = as.integer(colnames(nirs.cut)),
+        y = t(nirs.cut),
+        type = 'l', lty = 1,
+        xlab = "wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - cut")
+```
+
+## Average of 4 scans done on each sample
+
+For each genotype in one block, there are 4 scans : two sides of each shoot and two shoots.
+
+```{r nirs.ok, fig.height=4.5, fig.width = 7}
+# for p279, one genotype per bloc
+nirs.meanp279 <- apply(nirs.cut[sample.infop279$NIRS.nb,], 2, function(x) {
+  tapply(X = x, INDEX = sample.infop279$Id_bloc, FUN = mean)
+})
+# For controls, several controls per bloc
+nirs.meanCtl <- apply(nirs.cut[sample.infoCtl$NIRS.nb,], 2, function(x) {
+  tapply(X = x, INDEX = sample.infoCtl$Id_bloc, FUN = mean)
+})
+nirs.mean <- rbind(nirs.meanp279, nirs.meanCtl)
+
+
+matplot(x = as.integer(colnames(nirs.mean)),
+        y = t(nirs.mean),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - mean")
+```
+
+# Correct for work session effect with REP-ASCA
+
+## Estimate correction on the whole population
+
+Use `ortho.nirs` function which applies REP-ASCA correction to maximize the genotypic effect.
+```{r apply orthogonalization}
+dim(nirs.mean)
+
+# create a new data frame with one line per Id_bloc
+idx <- !duplicated(sample.info$Id_bloc)
+sample.info.mean <- data.frame(Id_bloc=sample.info$Id_bloc[idx],
+                               Id=sample.info$Id[idx], NIRS=I(nirs.mean),
+                               stringsAsFactors=FALSE)
+dim(sample.info.mean)
+
+out <- ortho.nirs(data=sample.info.mean, SpName="NIRS", corr.effect=NULL,
+                  max.effect="Id", ncomp=1, plot=TRUE, verbose=1)
+head(out$loadings)
+dim(out$loadings)
+dim(out$corrected)
+nirs.mean.corr <- out$corrected
+
+matplot(x = as.integer(colnames(nirs.mean.corr)),
+        y = t(nirs.mean.corr),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - mean after correction")
+nirs.mean.corr <- nirs.mean # don't apply correction for the moment
+```
+
+<!-- ### Minimize inter-session variance -->
+
+<!-- ```{r} -->
+<!-- out.session <- ortho.nirs(data=sample.info.mean, SpName="NIRS", corr.effect="session", -->
+<!--                           max.effect=NULL, ncomp=1, plot=TRUE, verbose=1) -->
+<!-- # type.corr <- "n1-session" -->
+<!-- # head(out.session$loadings) -->
+<!-- # dim(out.session$loadings) -->
+<!-- # dim(out.session$corrected) -->
+<!-- # nirs.mean.corr <- out.session$corrected -->
+<!-- #  -->
+<!-- # matplot(x = as.integer(colnames(out.session$corrected)), -->
+<!-- #         y = t(out.session$corrected), -->
+<!-- #         type = 'l', lty = 1, -->
+<!-- #         xlab = "Wavelength (nm)", ylab = "Reflectance", -->
+<!-- #         main = "Wood NIRS p279 - mean after correction") -->
+
+<!-- ``` -->
+
+# Pre-process spectrum
+
+## Smoothing
+
+Smoothing of spectra because some area are noisy and it could pose a challenge for other pre-process (derivative).
+Apply this on corrected spectra.
+
+```{r smooth, fig.height=5, fig.width=7}
+nirs.smooth <- t(apply(nirs.mean.corr, 1, function(x) {
+  sgolayfilt(x, p = 1, n = 21, m = 0, ts = 1)}))
+colnames(nirs.smooth) <- colnames(nirs.mean.corr)
+matplot(x = as.integer(colnames(nirs.smooth)),
+        y = t(nirs.smooth),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - smooth")
+```
+
+## Normalisation (SNV)
+
+```{r norm, fig.height=4, fig.width=7}
+nirs.snv <- t(scale(t(nirs.smooth)))
+
+matplot(x = as.integer(colnames(nirs.snv)),
+        y = t(nirs.snv),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - snv")
+```
+
+## Detrend
+
+```{r dt, fig.height=4, fig.width=7}
+nirs.dt <- prospectr::detrend(X = nirs.smooth,
+                              wav = as.integer(colnames(nirs.smooth)))
+
+matplot(x = as.integer(colnames(nirs.dt)),
+        y = t(nirs.dt),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - detrend")
+```
+
+## Derivative 1
+
+Derivative done on SNV spectrum.
+
+```{r der1, fig.height=4, fig.width=7}
+nirs.der1 <- t(apply(nirs.snv, 1, function(x) {
+  sgolayfilt(x, p = 2, n = 41, m = 1, ts = 1)}))
+
+colnames(nirs.der1) <- colnames(nirs.snv)
+matplot(x = as.integer(colnames(nirs.der1)),
+        y = t(nirs.der1),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - der1")
+```
+
+## Derivative 2
+
+```{r der2, fig.height=4, fig.width=7}
+nirs.der2 <- t(apply(nirs.snv, 1, function(x) {
+  sgolayfilt(x, p = 3, n = 81, m = 2, ts = 1)}))
+
+colnames(nirs.der2) <- colnames(nirs.snv)
+matplot(x = as.integer(colnames(nirs.der2)),
+        y = t(nirs.der2),
+        type = 'l', lty = 1,
+        xlab = "Wavelength (nm)", ylab = "Reflectance",
+        main = "Wood NIRS p279 2020 - der2")
+```
+
+## List of pre-process spectra
+
+For the p279
+
+```{r spectra list p279}
+nirs.list <- list("raw" = nirs.mean, "smooth" = nirs.smooth,
+                  "snv" = nirs.snv, "dt" = nirs.dt,
+                  "der1" = nirs.der1, "der2" = nirs.der2)
+nirs.listp279 <- lapply(nirs.list, function(x) {
+  merge(sample.infop279, data.frame("id" = rownames(x), "NIRS" = I(x)),
+        by.x="Id_bloc", by.y = "id", all=FALSE)
+})
+nirs.listp279 <- lapply(nirs.listp279, function(x){
+  x[!duplicated(x$Id_bloc),]})
+lapply(nirs.listp279, dim)
+
+
+
+
+# 
+# ## On corrected NIRS
+# 
+# nirs.list_corr <- list("snv corr" = nirs.snv_corr, "dt corr" = nirs.dt_corr,
+#                   "der1 corr" = nirs.der1_corr, "der2 corr" = nirs.der2_corr)
+# 
+# nirs.listp279_corr <- lapply(nirs.list_corr, function(x) {
+#   merge(sample.infop279, data.frame("id" = rownames(x), "NIRS" = I(x)),
+#         by.x="Id_bloc", by.y = "id", all=FALSE)
+# })
+# nirs.listp279_corr <- lapply(nirs.listp279_corr, function(x){
+#   x[!duplicated(x$Id_bloc),]})
+# lapply(nirs.listp279_corr, dim)
+```
+
+For controls
+
+```{r spectra list ctl}
+nirs.listCtl <- lapply(nirs.list, function(x) {
+  merge(sample.infoCtl, data.frame("id" = rownames(x), "NIRS" = I(x)),
+        by.x="Id_bloc", by.y = "id", all=FALSE)
+})
+nirs.listCtl <- lapply(nirs.listCtl, function(x){
+  x[!duplicated(x$Id_bloc),]})
+lapply(nirs.listCtl, dim)
+
+# #On corrected NIRS
+# 
+# nirs.listCtl_corr <- lapply(nirs.list_corr, function(x) {
+#   merge(sample.infoCtl, data.frame("id" = rownames(x), "NIRS" = I(x)),
+#         by.x="Id_bloc", by.y = "id", all=FALSE)
+# })
+# nirs.listCtl_corr <- lapply(nirs.listCtl_corr, function(x){
+#   x[!duplicated(x$Id_bloc),]})
+# lapply(nirs.listCtl_corr, dim)
+```
+
+For all
+
+```{r spectra list all}
+nirs.list <- lapply(nirs.list, function(x) {
+  merge(sample.info, data.frame("id" = rownames(x), "NIRS" = I(x)),
+        by.x="Id_bloc", by.y = "id", all=FALSE)
+})
+nirs.list <- lapply(nirs.list, function(x){
+  x[!duplicated(x$Id_bloc),]})
+lapply(nirs.list, dim)
+
+# save spectra
+p2f <- paste0(results.dir,"/spectrum_correction/wood_p279_2020_nirs-list-2-blocks.Rdata")
+save(nirs.list, file=p2f)
+
+# #On corrected NIRS
+# 
+# nirs.list_corr <- lapply(nirs.list_corr, function(x) {
+#   merge(sample.info, data.frame("id" = rownames(x), "NIRS" = I(x)),
+#         by.x="Id_bloc", by.y = "id", all=FALSE)
+# })
+# nirs.list_corr <- lapply(nirs.list_corr, function(x){
+#   x[!duplicated(x$Id_bloc),]})
+# lapply(nirs.list_corr, dim)
+```
+
+```{r echo = F}
+rm(nirs.cut, nirs.smooth, nirs.snv, nirs.dt, nirs.der1, nirs.der2)
+```
+
+# Exploratory analysis (PCA)
+
+## PCA on all population
+
+```{r pca ade4 all}
+data.ade4 <- lapply(nirs.list, function(x){
+  list("info" = data.frame(x[, - which(colnames(x) == "NIRS")]),
+       "NIRS" = as.data.frame(matrix(x$NIRS, nrow = nrow(x$NIRS),
+                                     ncol = ncol(x$NIRS))))})
+pca.ade4 <- lapply(data.ade4, function(x){
+  dudi.pca(x$NIRS, center=TRUE, scale=TRUE, scannf=F, nf=20)})
+
+# # On corrected NIRS
+# 
+# data.ade4_corr <- lapply(nirs.list_corr, function(x){
+#   list("info" = data.frame(x[, - which(colnames(x) == "NIRS")]),
+#        "NIRS" = as.data.frame(matrix(x$NIRS, nrow = nrow(x$NIRS),
+#                                      ncol = ncol(x$NIRS))))})
+# pca.ade4_corr <- lapply(data.ade4_corr, function(x){
+#   dudi.pca(x$NIRS, center=TRUE, scale=TRUE, scannf=F, nf=20)})
+```
+
+
+### Inertia
+
+```{r percvar pca all, fig.height=10, fig.width=6}
+par(mfrow = c(3, 2))
+
+pve.pca <- sapply(sapply(pca.ade4, function(x){x$eig / sum(x$eig) * 100}),
+                  function(y){y[1:10]})
+rownames(pve.pca) <- paste("PC", 1:nrow(pve.pca), sep = "")
+for (i in 1:ncol(pve.pca)){
+  barplot(pve.pca[, i], col = "grey",
+          main = colnames(pve.pca)[i],
+          ylab="% variance", ylim = c(0, round(max(pve.pca))))
+}
+
+# #On corrected NIRS
+# 
+# pve.pca_corr <- sapply(sapply(pca.ade4_corr, function(x){x$eig / sum(x$eig) * 100}),
+#                   function(y){y[1:10]})
+# rownames(pve.pca_corr) <- paste("PC", 1:nrow(pve.pca_corr), sep = "")
+# for (i in 1:ncol(pve.pca_corr)){
+#   barplot(pve.pca_corr[, i], col = "grey",
+#           main = colnames(pve.pca_corr)[i],
+#           ylab="% variance", ylim = c(0, round(max(pve.pca_corr))))
+# }
+```
+
+### Projection of spectrum on the first 2 axis
+
+```{r slabel pca all, fig.height=10, fig.width=6}
+par(mfrow = c(3, 2))
+for (i in 1:length(pca.ade4)){
+  s.label(pca.ade4[[i]]$li, label = data.ade4[[i]]$info$Id_bloc,
+          sub = names(pca.ade4)[i], clabel = 0.6)
+}
+
+# #On corrected NIRS
+# 
+# for (i in 1:length(pca.ade4_corr)){
+#   s.label(pca.ade4_corr[[i]]$li, label = data.ade4_corr[[i]]$info$Id_bloc,
+#           sub = names(pca.ade4_corr)[i], clabel = 0.6)
+# }
+```
+
+
+
+### With color per bloc
+
+```{r sclass pca all bloc, fig.height=8, fig.width=6}
+# col.bloc <- grepl("BlocA", rownames(nirs.mean))
+# col.bloc <- ifelse(col.bloc, "dodgerblue", "indianred")
+par(mfrow = c(3, 2))
+
+for (i in (1:length(pca.ade4))){
+  data.ade4[[i]]$info$Bloc <- as.factor(data.ade4[[i]]$info$Bloc)
+  s.class(dfxy = pca.ade4[[i]]$li, fac = data.ade4[[i]]$info$Bloc,
+          xax = 1, yax = 2, col = c("dodgerblue", "indianred"),
+          sub = names(pca.ade4)[i], csub=2, possub="topleft")
+}
+
+# 
+# #On corrected NIRS
+# 
+# for (i in (1:length(pca.ade4_corr))){
+#   data.ade4_corr[[i]]$info$Bloc <- as.factor(data.ade4_corr[[i]]$info$Bloc)
+#   s.class(dfxy = pca.ade4_corr[[i]]$li, fac = data.ade4_corr[[i]]$info$Bloc,
+#           xax = 1, yax = 2, col = col,
+#           sub = names(pca.ade4_corr)[i], csub=2, possub="topleft")
+# }
+```
+
+### With color per subpopulation
+TODO
+```{r sclass pca all cross, fig.height=8, fig.width=6}
+# # col <- c("dodgerblue", "indianred", "seagreen", "gold3")
+# par(mfrow = c(3, 2))
+# for (i in (1:length(pca.ade4))){
+#   data.ade4[[i]]$info$cross <- as.factor(data.ade4[[i]]$info$cross)
+#   s.class(dfxy = pca.ade4[[i]]$li, fac = data.ade4[[i]]$info$cross,
+#           xax = 1, yax = 2, col = colors_cross(data.ade4[[i]]$info$cross),
+#           sub = names(pca.ade4)[i], csub=2, possub="topleft")
+# }
+
+# #On corrected NIRS
+# 
+# for (i in (1:length(pca.ade4_corr))){
+#   data.ade4_corr[[i]]$info$status <- as.factor(data.ade4_corr[[i]]$info$status)
+#   s.class(dfxy = pca.ade4_corr[[i]]$li, fac = data.ade4_corr[[i]]$info$status,
+#           xax = 1, yax = 2, col = col,
+#           sub = names(pca.ade4_corr)[i], csub=2, possub="topleft")
+# }
+```
+
+
+<!-- ### With color if uncertainty/remarks -->
+
+<!-- ```{r sclass pca all remarks, fig.height=20, fig.width=6} -->
+<!-- unique(data.ade4$raw$info$Remarque) -->
+<!-- col <- brewer.pal(length(unique(data.ade4$raw$info$Remarque)), -->
+<!--                       name = "Set1") -->
+<!-- par(mfrow = c(6, 2)) -->
+<!-- for (i in (1:length(pca.ade4))){ -->
+<!--   data.ade4[[i]]$info$Remarque[is.na(data.ade4[[i]]$info$Remarque)] <- "OK" -->
+<!--   data.ade4[[i]]$info$Remarque <- as.factor(data.ade4[[i]]$info$Remarque) -->
+<!--   s.class(dfxy = pca.ade4[[i]]$li, fac = data.ade4[[i]]$info$Remarque, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4_corr))){ -->
+<!--   data.ade4_corr[[i]]$info$Remarque[is.na(data.ade4_corr[[i]]$info$Remarque)] <- "OK" -->
+<!--   data.ade4_corr[[i]]$info$Remarque <- as.factor(data.ade4_corr[[i]]$info$Remarque) -->
+<!--   s.class(dfxy = pca.ade4_corr[[i]]$li, fac = data.ade4_corr[[i]]$info$Remarque, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+<!-- ``` -->
+
+
+
+
+
+### With color per rank (ranks are chronologically colored)
+
+```{r sclass pca p279 rank, fig.height=8, fig.width=6}
+sample.infotri <- arrange(sample.info, sample.info$NIRS.nb)
+sample.info$NIRS.nb <- as.factor(sample.info$NIRS.nb)
+rank <- unique(sample.infotri$Rang)
+col <- viridis::viridis(length(rank))
+par(mfrow = c(3, 2))
+
+
+for (i in (1:length(pca.ade4))){
+  data.ade4[[i]]$info$Rang <- factor(data.ade4[[i]]$info$Rang,
+                                        levels=rank)#[order(rank)])
+  s.class(dfxy = pca.ade4[[i]]$li, fac = data.ade4[[i]]$info$Rang,
+          xax = 1, yax = 2, col = col,
+          sub = names(pca.ade4)[i], csub=2, possub="topleft")
+}
+# 
+# #On corrected NIRS
+# 
+# for (i in (1:length(pca.ade4_corr))){
+#   data.ade4_corr[[i]]$info$Rang <- factor(data.ade4_corr[[i]]$info$Rang,
+#                                         levels=rank)#[order(rank)])
+#   s.class(dfxy = pca.ade4_corr[[i]]$li, fac = data.ade4_corr[[i]]$info$Rang,
+#           xax = 1, yax = 2, col = col,
+#           sub = names(pca.ade4_corr)[i], csub=2, possub="topleft")
+# }
+```
+
+<!-- ### With color per work sessions -->
+
+<!-- ```{r sclass pca p279 work sessions, fig.height=10, fig.width=6} -->
+<!-- col <- c("hotpink2", "aquamarine2") -->
+
+<!-- par(mfrow = c(3, 2)) -->
+
+<!-- for (i in (1:length(pca.ade4))){ -->
+<!--   data.ade4[[i]]$info$Manip_Session <- as.factor(data.ade4[[i]]$info$Manip_Session) -->
+<!--   s.class(dfxy = pca.ade4[[i]]$li, fac = data.ade4[[i]]$info$Manip_Session, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- # #On corrected NIRS -->
+<!-- #  -->
+<!-- # for (i in (1:length(pca.ade4_corr))){ -->
+<!-- #   data.ade4_corr[[i]]$info$Manip_Session <- as.factor(data.ade4_corr[[i]]$info$Manip_Session) -->
+<!-- #   s.class(dfxy = pca.ade4_corr[[i]]$li, fac = data.ade4_corr[[i]]$info$Manip_Session, -->
+<!-- #           xax = 1, yax = 2, col = col, -->
+<!-- #           sub = names(pca.ade4_corr)[i], csub=2, possub="topleft") -->
+<!-- # } -->
+<!-- ``` -->
+
+
+<!-- ## PCA on p279 -->
+
+<!-- ```{r pca ade4 p279} -->
+<!-- data.ade4p279 <- lapply(nirs.listp279, function(x){ -->
+<!--   list("info" = data.frame(x[, - which(colnames(x) == "NIRS")]), -->
+<!--        "NIRS" = as.data.frame(matrix(x$NIRS, nrow = nrow(x$NIRS), -->
+<!--                                      ncol = ncol(x$NIRS))))}) -->
+<!-- pca.ade4p279 <- lapply(data.ade4p279, function(x){ -->
+<!--   dudi.pca(x$NIRS, center=TRUE, scale=TRUE, scannf=F, nf=20)}) -->
+
+<!-- # #On corrected NIRS -->
+<!-- #  -->
+<!-- # data.ade4p279_corr <- lapply(nirs.listp279_corr, function(x){ -->
+<!-- #   list("info" = data.frame(x[, - which(colnames(x) == "NIRS")]), -->
+<!-- #        "NIRS" = as.data.frame(matrix(x$NIRS, nrow = nrow(x$NIRS), -->
+<!-- #                                      ncol = ncol(x$NIRS))))}) -->
+<!-- # pca.ade4p279_corr <- lapply(data.ade4p279_corr, function(x){ -->
+<!-- #   dudi.pca(x$NIRS, center=TRUE, scale=TRUE, scannf=F, nf=20)}) -->
+<!-- ``` -->
+
+
+<!-- ### Inertia -->
+
+<!-- ```{r percvar pca p279, fig.height=20, fig.width=6} -->
+<!-- par(mfrow = c(6, 2)) -->
+
+<!-- pve.pcap279 <- sapply(sapply(pca.ade4p279, function(x){x$eig / sum(x$eig) * 100}), -->
+<!--                   function(y){y[1:10]}) -->
+<!-- rownames(pve.pcap279) <- paste("PC", 1:nrow(pve.pcap279), sep = "") -->
+
+<!-- for (i in 1:ncol(pve.pcap279)){ -->
+<!--   barplot(pve.pcap279[, i], col = "grey", -->
+<!--           main = colnames(pve.pcap279)[i], -->
+<!--           ylab="% variance", ylim = c(0, round(max(pve.pcap279)))) -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- pve.pcap279_corr <- sapply(sapply(pca.ade4p279_corr, function(x){x$eig / sum(x$eig) * 100}), -->
+<!--                   function(y){y[1:10]}) -->
+<!-- rownames(pve.pcap279_corr) <- paste("PC", 1:nrow(pve.pcap279_corr), sep = "") -->
+<!-- for (i in 1:ncol(pve.pcap279_corr)){ -->
+<!--   barplot(pve.pcap279_corr[, i], col = "grey", -->
+<!--           main = colnames(pve.pcap279_corr)[i], -->
+<!--           ylab="% variance", ylim = c(0, round(max(pve.pcap279_corr)))) -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- ### Projection of spectrum on the first 2 axis -->
+
+<!-- ```{r slabel pca p279, fig.height=20, fig.width=6} -->
+<!-- par(mfrow = c(6, 2)) -->
+<!-- for (i in 1:length(pca.ade4p279)){ -->
+<!--   s.label(pca.ade4p279[[i]]$li, label = data.ade4p279[[i]]$info$Id_bloc, -->
+<!--           sub = names(pca.ade4p279)[i], clabel = 0.6) -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in 1:length(pca.ade4p279_corr)){ -->
+<!--   s.label(pca.ade4p279_corr[[i]]$li, label = data.ade4p279_corr[[i]]$info$Id_bloc, -->
+<!--           sub = names(pca.ade4p279_corr)[i], clabel = 0.6) -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- ### With color per block -->
+
+<!-- ```{r sclass pca p279 block, fig.height=20, fig.width=6} -->
+<!-- col <- c("dodgerblue", "indianred") -->
+<!-- par(mfrow = c(6, 2)) -->
+
+<!-- for (i in (1:length(pca.ade4p279))){ -->
+<!--   data.ade4p279[[i]]$info$Bloc <- as.factor(data.ade4p279[[i]]$info$Bloc) -->
+<!--   s.class(dfxy = pca.ade4p279[[i]]$li, fac = data.ade4p279[[i]]$info$Bloc, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4p279_corr))){ -->
+<!--   data.ade4p279_corr[[i]]$info$Bloc <- as.factor(data.ade4p279_corr[[i]]$info$Bloc) -->
+<!--   s.class(dfxy = pca.ade4p279_corr[[i]]$li, fac = data.ade4p279_corr[[i]]$info$Bloc, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+<!-- ``` -->
+<!-- ### With color per berry color -->
+
+<!-- ```{r sclass pca p279 berry color, fig.height=20, fig.width=6} -->
+<!-- col <- col <- brewer.pal(length(unique(data.ade4p279$raw$info$Couleur)), -->
+<!--                       name = "Dark2") -->
+<!-- par(mfrow = c(6, 2)) -->
+
+<!-- for (i in (1:length(pca.ade4p279))){ -->
+<!--   data.ade4p279[[i]]$info$Couleur <- as.factor(data.ade4p279[[i]]$info$Couleur) -->
+<!--   s.class(dfxy = pca.ade4p279[[i]]$li, fac = data.ade4p279[[i]]$info$Couleur, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4p279_corr))){ -->
+<!--   data.ade4p279_corr[[i]]$info$Couleur <- as.factor(data.ade4p279_corr[[i]]$info$Couleur) -->
+<!--   s.class(dfxy = pca.ade4p279_corr[[i]]$li, fac = data.ade4p279_corr[[i]]$info$Couleur, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- ``` -->
+
+<!-- ### With color per geographical origin -->
+
+<!-- ```{r sclass pca p279 origin, fig.height=20, fig.width=6} -->
+<!-- col <- c("hotpink3", "aquamarine2", "yellow2") -->
+<!-- par(mfrow = c(6, 2)) -->
+
+<!-- for (i in (1:length(pca.ade4p279))){ -->
+<!--   data.ade4p279[[i]]$info$Origin <- as.factor(data.ade4p279[[i]]$info$Origin) -->
+<!--   s.class(dfxy = pca.ade4p279[[i]]$li, fac = data.ade4p279[[i]]$info$Origin, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4p279_corr))){ -->
+<!--   data.ade4p279_corr[[i]]$info$Origin <- as.factor(data.ade4p279_corr[[i]]$info$Origin) -->
+<!--   s.class(dfxy = pca.ade4p279_corr[[i]]$li, fac = data.ade4p279_corr[[i]]$info$Origin, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- ``` -->
+
+
+<!-- ### With color per : Country, Group and Sub-group -->
+
+<!-- ```{r sclass pca p279 country, fig.height=20, fig.width=6} -->
+<!-- col <- pals::alphabet(length(unique(data.ade4p279$raw$info$Pays))) -->
+<!-- unique(sample.info$Pays) -->
+<!-- par(mfrow = c(6, 2)) -->
+<!-- for (i in (1:length(pca.ade4p279))){ -->
+<!--   data.ade4p279[[i]]$info$Pays <- as.factor(data.ade4p279[[i]]$info$Pays) -->
+<!--   s.class(dfxy = pca.ade4p279[[i]]$li, fac = data.ade4p279[[i]]$info$Pays, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4p279_corr))){ -->
+<!--   data.ade4p279_corr[[i]]$info$Pays <- as.factor(data.ade4p279_corr[[i]]$info$Pays) -->
+<!--   s.class(dfxy = pca.ade4p279_corr[[i]]$li, fac = data.ade4p279_corr[[i]]$info$Pays, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- ``` -->
+
+<!-- ```{r sclass pca p279 group, fig.height=20, fig.width=6} -->
+<!-- col <- brewer.pal(length(unique(data.ade4p279$raw$info$Grp_Geo)), -->
+<!--                       name = "Set3") -->
+<!-- unique(sample.info$Grp_Geo) -->
+<!-- par(mfrow = c(6, 2)) -->
+
+<!-- for (i in (1:length(pca.ade4p279))){ -->
+<!--   data.ade4p279[[i]]$info$Grp_Geo <- as.factor(data.ade4p279[[i]]$info$Grp_Geo) -->
+<!--   s.class(dfxy = pca.ade4p279[[i]]$li, fac = data.ade4p279[[i]]$info$Grp_Geo, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4p279_corr))){ -->
+<!--   data.ade4p279_corr[[i]]$info$Grp_Geo <- as.factor(data.ade4p279_corr[[i]]$info$Grp_Geo) -->
+<!--   s.class(dfxy = pca.ade4p279_corr[[i]]$li, fac = data.ade4p279_corr[[i]]$info$Grp_Geo, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- ``` -->
+
+<!-- ```{r sclass pca p279 sub-group, fig.height=20, fig.width=6} -->
+<!-- col <- pals::alphabet(length(unique(data.ade4p279$raw$info$Sous_Grp_Geo))) -->
+<!-- unique(sample.info$Sous_Grp_Geo) -->
+<!-- par(mfrow = c(6, 2)) -->
+
+<!-- for (i in (1:length(pca.ade4p279))){ -->
+<!--   data.ade4p279[[i]]$info$Sous_Grp_Geo <- as.factor(data.ade4p279[[i]]$info$Sous_Grp_Geo) -->
+<!--   s.class(dfxy = pca.ade4p279[[i]]$li, fac = data.ade4p279[[i]]$info$Sous_Grp_Geo, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- #On corrected NIRS -->
+
+<!-- for (i in (1:length(pca.ade4p279_corr))){ -->
+<!--   data.ade4p279_corr[[i]]$info$Sous_Grp_Geo <- as.factor(data.ade4p279_corr[[i]]$info$Sous_Grp_Geo) -->
+<!--   s.class(dfxy = pca.ade4p279_corr[[i]]$li, fac = data.ade4p279_corr[[i]]$info$Sous_Grp_Geo, -->
+<!--           xax = 1, yax = 2, col = col, -->
+<!--           sub = names(pca.ade4p279_corr)[i], csub=2, possub="topleft") -->
+<!-- } -->
+
+<!-- ``` -->
+
+
+# Variance partition
+
+## Along the spectrum
+
+### Apply ANOVA
+
+Use a random effect model to partition the variance with `VCA` package.
+
+Total variance is divided in variety effect (Id), bloc effect, and residual (corresponding to repetitions on same genotype)
+
+
+```{r vca}
+p2f <- paste0(results.dir, "/spectrum_correction/wood_p279_2020_outputVCA.Rdata")
+if(!file.exists(p2f)){
+system.time(output.vca <- mclapply(nirs.listp279, function(n) {
+    output <- matrix(NA, nrow = 3, ncol = ncol(n$NIRS))
+    colnames(output) <- colnames(n$NIRS)
+    rownames(output) <- c("Id", "Id:Bloc", "error")
+    for (i in 1:ncol(n$NIRS)) {
+      tmp <- data.frame(n[, c("Id", "Bloc", "Id_bloc")],
+                        y = as.vector(n$NIRS[, i]))
+
+      vcmod <- anovaVCA(y ~ Id + Bloc, tmp, VarVC.method = "gb")
+      output[, i] <- vcmod$aov.tab[2:4, "%Total"]
+      rm(tmp, vcmod)
+    }
+    return(output)
+  },
+  mc.cores = 3))
+  save(output.vca, file=p2f)
+} else {
+  load(p2f)
+}
+# 
+# p2f_corr <- paste0(results.dir, "/outputVCA_p279_corr_all_n1-session.Rdata")
+# if(!file.exists(p2f_corr)){
+# system.time(output.vca_corr <- mclapply(nirs.listp279_corr, function(n) {
+#     output_corr <- matrix(NA, nrow = 3, ncol = ncol(n$NIRS))
+#     colnames(output_corr) <- colnames(n$NIRS)
+#     rownames(output_corr) <- c("Id", "Id:Bloc", "error")
+#     for (i in 1:ncol(n$NIRS)) {
+#       tmp_corr <- data.frame(n[, c("Id", "Bloc", "Id_bloc")],
+#                         y = as.vector(n$NIRS[, i]))
+# 
+#       vcmod_corr <- anovaVCA(y ~ Id + Bloc, tmp_corr, VarVC.method = "gb")
+#       output_corr[, i] <- vcmod_corr$aov.tab[2:4, "%Total"]
+#       rm(tmp_corr, vcmod_corr)
+#     }
+#     return(output_corr)
+#   },
+#   mc.cores = 1))
+#   save(output.vca_corr, file=p2f_corr)
+# } else {
+#   load(p2f_corr)
+# }
+```
+
+### Plot results
+
+Plot variance partition along the spectrum
+
+```{r plot vca, fig.height=15, fig.width=20}
+par(mfrow = c(3, 2), mar = c(5, 5, 3, 4), xpd = TRUE)
+
+varpropcum <- lapply(output.vca, function(x) {
+  apply(x, 2, cumsum)
+})
+spectra_summary <- lapply(nirs.listp279, function(x) {
+  data.frame("lambda" = as.integer(colnames(x$NIRS)),
+             "mediane" = apply(x$NIRS, 2, median),
+             "q1" = apply(x$NIRS, 2, function(x){quantile(x, 0.25)}),
+             "q3" = apply(x$NIRS, 2, function(x){quantile(x, 0.75)}))
+})
+
+for (i in 1:length(spectra_summary)){
+  plot(x = spectra_summary[[i]]$lambda, y = spectra_summary[[i]]$mediane, type = "n",
+       ylim = c(0, 100), xlab = "wavelength (nm)",
+       ylab = "Percentage of variances",
+       main = names(varpropcum)[i])
+  polygon(c(spectra_summary[[i]]$lambda, rev(spectra_summary[[i]]$lambda)),
+          c(rep(0, ncol(varpropcum[[i]])), rev(varpropcum[[i]][1, ])),
+          col = "brown1")
+  polygon(c(spectra_summary[[i]]$lambda, rev(spectra_summary[[i]]$lambda)),
+          c(varpropcum[[i]][1, ], rev(varpropcum[[i]][2, ])),
+          col = "forestgreen")
+  polygon(c(spectra_summary[[i]]$lambda, rev(spectra_summary[[i]]$lambda)),
+          c(varpropcum[[i]][2, ], rev(varpropcum[[i]][3, ])),
+          col = "dodgerblue4")
+  par(new = TRUE)
+  plot(spectra_summary[[i]]$lambda, spectra_summary[[i]]$mediane, type = "l",
+       lty = 1, lwd = 1.5, ylim = range(nirs.listp279[[i]]$NIRS),
+       axes = F, xlab = "", ylab = "", main = "", col = "black")
+  polygon(c(spectra_summary[[i]]$lambda, rev(spectra_summary[[i]]$lambda)),
+          c(spectra_summary[[i]]$q1, rev(spectra_summary[[i]]$q3)),
+          col = "#C8C8C888", border = 0)
+  axis(4)
+  mtext("Refelctance", side = 4, line = 2.5, cex = 0.7)
+}
+legend(-100, 0.0019, c("res=bloc/genotype", "bloc", "genotype"),
+       lty = 0, bty = "n", fill = rev(c("brown1", "forestgreen", "dodgerblue4")))
+
+
+# varpropcum_corr <- lapply(output.vca_corr, function(x) {
+#   apply(x, 2, cumsum)
+# })
+# spectra_summary_corr <- lapply(nirs.listp279_corr, function(x) {
+#   data.frame("lambda" = as.integer(colnames(x$NIRS)),
+#              "mediane" = apply(x$NIRS, 2, median),
+#              "q1" = apply(x$NIRS, 2, function(x){quantile(x, 0.25)}),
+#              "q3" = apply(x$NIRS, 2, function(x){quantile(x, 0.75)}))
+# })
+
+# #On corrected NIRS
+# 
+# for (i in 1:length(spectra_summary_corr)){
+#   plot(x = spectra_summary_corr[[i]]$lambda, y = spectra_summary_corr[[i]]$mediane, type = "n",
+#        ylim = c(0, 100), xlab = "wavelength (nm)",
+#        ylab = "Percentage of variances",
+#        main = names(varpropcum_corr)[i])
+#   polygon(c(spectra_summary_corr[[i]]$lambda, rev(spectra_summary_corr[[i]]$lambda)),
+#           c(rep(0, ncol(varpropcum_corr[[i]])), rev(varpropcum_corr[[i]][1, ])),
+#           col = "brown1")
+#   polygon(c(spectra_summary_corr[[i]]$lambda, rev(spectra_summary_corr[[i]]$lambda)),
+#           c(varpropcum_corr[[i]][1, ], rev(varpropcum_corr[[i]][2, ])),
+#           col = "forestgreen")
+#   polygon(c(spectra_summary_corr[[i]]$lambda, rev(spectra_summary_corr[[i]]$lambda)),
+#           c(varpropcum_corr[[i]][2, ], rev(varpropcum_corr[[i]][3, ])),
+#           col = "dodgerblue4")
+#   par(new = TRUE)
+#   plot(spectra_summary_corr[[i]]$lambda, spectra_summary_corr[[i]]$mediane, type = "l",
+#        lty = 1, lwd = 1.5, ylim = range(nirs.listp279_corr[[i]]$NIRS),
+#        axes = F, xlab = "", ylab = "", main = "", col = "black")
+#   polygon(c(spectra_summary_corr[[i]]$lambda, rev(spectra_summary_corr[[i]]$lambda)),
+#           c(spectra_summary_corr[[i]]$q1, rev(spectra_summary_corr[[i]]$q3)),
+#           col = "#C8C8C888", border = 0)
+#   axis(4)
+#   mtext("Refelctance", side = 4, line = 2.5, cex = 0.7)
+# }
+# legend(-100, 0.0019, c("res=bloc/genotype", "bloc", "genotype"),
+#        lty = 0, bty = "n", fill = rev(c("brown1", "forestgreen", "dodgerblue4")))
+```
+
+Save variance partitions along the spectrum :
+
+```{r save varpropcum}
+p2f <- paste0(results.dir,"/spectrum_correction/wood_p279_2020_variance-parts.Rdata")
+save(varpropcum, file=p2f)
+# save(varpropcum_corr, file=paste0(results.dir,
+#                                   "/p279_variance-parts_corr_all_n1-session.Rdata"))
+```
+
+## On PCA coordinate axis
+
+```{r pca coord, cache = TRUE}
+output.vca.pca <- list()
+for (i in 1:length(nirs.list)){
+  nirs.list[[i]]$PCs <- pca.ade4[[i]]$li
+  output.vca.pca[[i]] <- matrix(NA, nrow = 3, ncol = 10)
+  rownames(output.vca.pca[[i]]) <- c("Id", "Id:Bloc", "error")
+  colnames(output.vca.pca[[i]]) <- paste0("PC", 1:10)
+  for (j in 1:10) {
+    tmp <- data.frame(nirs.list[[i]][, c("Id", "Bloc", "Id_bloc")],
+                      y = as.vector(nirs.list[[i]]$PCs[, j]))
+    vcmod <- anovaVCA(y ~ Id+Bloc, tmp)
+    output.vca.pca[[i]][, j] <- vcmod$aov.tab[2:4, "%Total"]
+    rm(tmp, vcmod)
+  }
+  cat(i)
+}
+
+# #On corrected NIRS
+# 
+# output.vca.pca_corr <- list()
+# for (i in 1:length(nirs.listp279_corr)){
+#   nirs.listp279_corr[[i]]$PCs <- pca.ade4p279_corr[[i]]$li
+#   output.vca.pca_corr[[i]] <- matrix(NA, nrow = 3, ncol = 10)
+#   rownames(output.vca.pca_corr[[i]]) <- c("Id", "Id:Bloc", "error")
+#   colnames(output.vca.pca_corr[[i]]) <- paste0("PC", 1:10)
+#   for (j in 1:10) {
+#     tmp_corr <- data.frame(nirs.listp279_corr[[i]][, c("Id", "Bloc", "Id_bloc")],
+#                       y = as.vector(nirs.listp279_corr[[i]]$PCs[, j]))
+#     vcmod_corr <- anovaVCA(y ~ Id+Bloc, tmp_corr)
+#     output.vca.pca_corr[[i]][, j] <- vcmod_corr$aov.tab[2:4, "%Total"]
+#     rm(tmp_corr, vcmod_corr)
+#   }
+#   cat(i)
+# }
+```
+
+```{r percvarcomp pca, fig.height=10, fig.width=10}
+par(mfrow = c(3, 2), mar = c(4.5, 4.5, 2, 1))
+
+barplot(t(pve.pca[, 1] * t(output.vca.pca[[1]]) / 100),
+          col = c("brown1", "forestgreen", "dodgerblue4"),
+          main = colnames(pve.pca)[1],
+          ylab="% variance", ylim = c(0, 100))
+legend("topright", c("res=bloc/genotype", "bloc", "genotype"),
+       lty = 0, bty = "n", fill = rev(c("brown1", "forestgreen", "dodgerblue4")))
+for (i in 2:ncol(pve.pca)){
+  barplot(t(pve.pca[, i] * t(output.vca.pca[[i]]) / 100),
+          col = c("brown1", "forestgreen", "dodgerblue4"),
+          main = colnames(pve.pca)[i],
+          ylab="% variance", ylim = c(0, 100))
+}
+
+# #On corrected NIRS
+# 
+# barplot(t(pve.pcap279_corr[, 1] * t(output.vca.pca_corr[[1]]) / 100),
+#           col = c("brown1", "forestgreen", "dodgerblue4"),
+#           main = colnames(pve.pcap279_corr)[1],
+#           ylab="% variance", ylim = c(0, 100))
+# legend("topright", c("res=bloc/genotype", "bloc", "genotype"),
+#        lty = 0, bty = "n", fill = rev(c("brown1", "forestgreen", "dodgerblue4")))
+# for (i in 2:ncol(pve.pcap279_corr)){
+#   barplot(t(pve.pcap279_corr[, i] * t(output.vca.pca_corr[[i]]) / 100),
+#           col = c("brown1", "forestgreen", "dodgerblue4"),
+#           main = colnames(pve.pcap279_corr)[i],
+#           ylab="% variance", ylim = c(0, 100))
+# }
+```
+
+# Save Spectra
+
+For phenomic prediction.
+
+Save the mean spectra for each modality (corrected / non corrected and each pre-process).
+
+```{r}
+nirs.all <- nirs.list
+names(nirs.all)
+
+sp.name <- colnames(nirs.all$raw$NIRS)
+X.nirs <- lapply(nirs.all, function(x){
+   apply(x$NIRS, 2, function(y) {tapply(y, x$Id, mean)})})
+X.nirs$raw[1:5,1:8]
+
+p2f <- paste0(results.dir,"/spectrum_correction/wood_p279_2020_all_spectra.Rdata")
+save(X.nirs, file=p2f)
+```
+
+
+
+
+# Appendix
+
+```{r info}
+stopCluster(cl)
+format(Sys.time(), '%d/%m/%Y %H:%M:%S')
+t1 <- proc.time(); t1 - t0
+print(sessionInfo(), locale=FALSE)
+```
+
+
+
