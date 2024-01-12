@@ -95,23 +95,27 @@ for (i in 1:ncol(Phenotyping_Poplar)){
       accuracy_table_five$g_acc_gcor[((i-1)*5 + j)] = 
         estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
       
+      Y2 = Y
       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
                              NIRS_NormDer_Wood_Poplar_ORL[-selected, ])
-        Y$pred = NIRS_NormDer_Wood_Poplar_ORL[selected, ] %*% pmodel$u
+        Y2$pred = NIRS_NormDer_Wood_Poplar_ORL[selected, ] %*% pmodel$u
       } else {
         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
                              NIRS_NormDer_Wood_Poplar_SAV[-selected, ])
-        Y$pred = NIRS_NormDer_Wood_Poplar_SAV[selected, ] %*% pmodel$u
+        Y2$pred = NIRS_NormDer_Wood_Poplar_SAV[selected, ] %*% pmodel$u
       }
       
-      accuracy_table_five$p_acc_pear[((i-1)*5 + j)] = cor(Y$obs, Y$pred)
+      accuracy_table_five$p_acc_pear[((i-1)*5 + j)] = cor(Y2$obs, Y2$pred)
       accuracy_table_five$p_acc_gcor[((i-1)*5 + j)] = 
-        estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+        estimate_gcor(data=Y2, Knn=kin, method="MCMCglmm", normalize=F)[1]
       
     }, error=function(e){cat(i, j, "\n", "Error:", conditionMessage(e), "\n")})
     }
 }
+# saveRDS(Y, "Y.rds")
+# saveRDS(Y2, "Y2.rds")
+# saveRDS(kin, "kin.rds")
 
 accuracy_table_four <- data.frame(fold="four folds", 
                                   trait=rep(colnames(Phenotyping_Poplar), each=4), 
@@ -237,9 +241,9 @@ for (i in 1:length(traits)){
     geom_boxplot() + 
     facet_wrap(~fold) + 
     scale_fill_hue(labels=c("g_acc_pear"="genomic accuracy Pearson", 
-                            "g_acc_gcor"="genomic accuracy adjusted", 
+                            "g_acc_gcor"="genomic accuracy corrected", 
                             "p_acc_pear"="phenomic accuracy Pearson", 
-                            "p_acc_gcor"="phenomic accuracy adjusted")) + 
+                            "p_acc_gcor"="phenomic accuracy corrected")) + 
     theme_minimal_grid(font_size=10) + 
     theme(axis.title.x = element_blank(),
           axis.text.x = element_blank(),
