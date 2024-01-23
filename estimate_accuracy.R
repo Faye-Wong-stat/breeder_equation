@@ -42,7 +42,9 @@ NIRS_NormDer_Wood_Poplar_ORL <- NIRS_NormDer_Wood_Poplar_ORL[, -1]
 rownames(NIRS_NormDer_Wood_Poplar_SAV) <- NIRS_NormDer_Wood_Poplar_SAV$Accession
 NIRS_NormDer_Wood_Poplar_SAV <- NIRS_NormDer_Wood_Poplar_SAV[, -1]
 
-Genotyping_Poplar <- scale(Genotyping_Poplar)
+# Genotyping_Poplar <- scale(Genotyping_Poplar)
+Genotyping_Poplar <- Genotyping_Poplar*2 - 1
+Genotyping_Poplar <- as.matrix(Genotyping_Poplar)
 NIRS_NormDer_Wood_Poplar_ORL <- scale(NIRS_NormDer_Wood_Poplar_ORL)
 NIRS_NormDer_Wood_Poplar_SAV <- scale(NIRS_NormDer_Wood_Poplar_SAV)
 
@@ -53,7 +55,7 @@ dim(NIRS_NormDer_Wood_Poplar_ORL)
 NIRS_NormDer_Wood_Poplar_ORL[1:5, 1:5]
 NIRS_NormDer_Wood_Poplar_SAV[1:5, 1:5]
 
-kinship <- Genotyping_Poplar %*% t(Genotyping_Poplar) / nrow(Genotyping_Poplar) #####
+kinship <- A.mat(Genotyping_Poplar)
 
 set.seed(1) 
 ORL_names <- colnames(Phenotyping_Poplar)[grepl("ORL", colnames(Phenotyping_Poplar))]
@@ -72,10 +74,7 @@ accuracy_table_five <- data.frame(fold="five folds",
                              g_acc_gcor=NA, 
                              p_acc_pear=NA, 
                              p_acc_gcor=NA)
-i
-# [1] 2
-j
-# [1] 4
+
 for (i in 1:ncol(Phenotyping_Poplar)){
   for (j in 1:5){
     tryCatch({
