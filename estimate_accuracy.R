@@ -73,7 +73,8 @@ accuracy_table_five <- data.frame(fold="five folds",
                              g_acc_pear=NA, 
                              g_acc_gcor=NA, 
                              p_acc_pear=NA, 
-                             p_acc_gcor=NA)
+                             p_acc_gcor=NA, 
+                             h2 = NA)
 
 for (i in 1:ncol(Phenotyping_Poplar)){
   for (j in 1:5){
@@ -90,9 +91,17 @@ for (i in 1:ncol(Phenotyping_Poplar)){
                            Genotyping_Poplar[-selected, ])
       Y$pred = Genotyping_Poplar[Y$ID, ] %*% gmodel$u
       
+      # pdf("estimate_accuracy/plots/marker_effects.pdf")
+      # hist(gmodel$u)
+      # dev.off()
+      # 
       accuracy_table_five$g_acc_pear[((i-1)*5 + j)] = cor(Y$obs, Y$pred)
-      accuracy_table_five$g_acc_gcor[((i-1)*5 + j)] = 
-        estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+      
+      K = kinship[-selected, -selected]
+      gmodel2 = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], K=K)
+      h2 = gmodel2$Vu / (gmodel2$Vu+gmodel2$Ve)
+      accuracy_table_five$g_acc_gcor[((i-1)*5 + j)] = accuracy_table_five$g_acc_pear[((i-1)*5 + j)] / sqrt(h2)
+      accuracy_table_five$h2[((i-1)*5 + j)] = h2
       
       Y2 = Y
       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
@@ -115,6 +124,27 @@ for (i in 1:ncol(Phenotyping_Poplar)){
 # saveRDS(Y, "Y.rds")
 # saveRDS(Y2, "Y2.rds")
 # saveRDS(kin, "kin.rds")
+# 
+# set.seed(11)
+# X = sample(1:ncol(Genotyping_Poplar), 1000)
+# test_table <- data.frame(geno=X, 
+#                          Vu=NA,
+#                          Ve=NA)
+# for (k in 1:1000){
+#   pheno = Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]]
+#   geno = as.factor(Genotyping_Poplar[-selected, X[k]])
+#   model = lmer(pheno ~ (1 | geno))
+#   variance = data.frame(VarCorr(model))
+#   test_table$Vu[k] = variance[1, "vcov"]
+#   test_table$Ve[k] = variance[2, "vcov"] / mean(table(geno))
+# }
+# test_table$h2 <- test_table$Vu / (test_table$Vu + test_table$Ve)
+# saveRDS(test_table, "estimate_accuracy/test_table.rds")
+# pdf("estimate_accuracy/plots/h2.pdf")
+# hist(test_table$h2)
+# dev.off()
+
+
 
 accuracy_table_four <- data.frame(fold="four folds", 
                                   trait=rep(colnames(Phenotyping_Poplar), each=4), 
@@ -122,7 +152,8 @@ accuracy_table_four <- data.frame(fold="four folds",
                                   g_acc_pear=NA, 
                                   g_acc_gcor=NA, 
                                   p_acc_pear=NA, 
-                                  p_acc_gcor=NA)
+                                  p_acc_gcor=NA, 
+                                  h2=NA)
 for (i in 1:ncol(Phenotyping_Poplar)){
   for (j in 1:4){
     tryCatch({
@@ -139,8 +170,12 @@ for (i in 1:ncol(Phenotyping_Poplar)){
       Y$pred = Genotyping_Poplar[Y$ID, ] %*% gmodel$u
       
       accuracy_table_four$g_acc_pear[((i-1)*4 + j)] = cor(Y$obs, Y$pred)
-      accuracy_table_four$g_acc_gcor[((i-1)*4 + j)] = 
-        estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+      
+      K = kinship[-selected, -selected]
+      gmodel2 = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], K=K)
+      h2 = gmodel2$Vu / (gmodel2$Vu+gmodel2$Ve)
+      accuracy_table_four$g_acc_gcor[((i-1)*4 + j)] = accuracy_table_four$g_acc_pear[((i-1)*4 + j)] / sqrt(h2)
+      accuracy_table_four$h2[((i-1)*4 + j)] = h2
       
       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
@@ -166,7 +201,8 @@ accuracy_table_three <- data.frame(fold="three folds",
                                   g_acc_pear=NA, 
                                   g_acc_gcor=NA, 
                                   p_acc_pear=NA, 
-                                  p_acc_gcor=NA)
+                                  p_acc_gcor=NA, 
+                                  h2=NA)
 for (i in 1:ncol(Phenotyping_Poplar)){
   for (j in 1:3){
     tryCatch({
@@ -184,8 +220,12 @@ for (i in 1:ncol(Phenotyping_Poplar)){
       Y$pred = Genotyping_Poplar[Y$ID, ] %*% gmodel$u
       
       accuracy_table_three$g_acc_pear[((i-1)*3 + j)] = cor(Y$obs, Y$pred)
-      accuracy_table_three$g_acc_gcor[((i-1)*3 + j)] = 
-        estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+      
+      K = kinship[-selected, -selected]
+      gmodel2 = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], K=K)
+      h2 = gmodel2$Vu / (gmodel2$Vu+gmodel2$Ve)
+      accuracy_table_three$g_acc_gcor[((i-1)*3 + j)] = accuracy_table_three$g_acc_pear[((i-1)*3 + j)] / sqrt(h2)
+      accuracy_table_three$h2[((i-1)*3 + j)] = h2
       
       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
@@ -225,11 +265,18 @@ for (i in 1:nrow(accuracy_table)){
     accuracy_table[i, 4:7]
 }
 accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
+h2_table <- aggregate(accuracy_table$h2, list(accuracy_table$trait), mean)
+rownames(h2_table) <- h2_table$Group.1
+accuracy_table_long$h2 <- h2_table[accuracy_table_long$trait, "x"]
 accuracy_table_long <- na.omit(accuracy_table_long)
+accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
+accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear", 
+                                                                      "g_acc_gcor", "p_acc_gcor"))
 
 
 
 traits <- unique(accuracy_table_long$trait)
+h2 <- unique(accuracy_table_long$h2)
 
 
 
@@ -240,15 +287,16 @@ for (i in 1:length(traits)){
     geom_boxplot() + 
     facet_wrap(~fold) + 
     scale_fill_hue(labels=c("g_acc_pear"="genomic accuracy Pearson", 
-                            "g_acc_gcor"="genomic accuracy corrected", 
+                            "g_acc_gcor"="genomic accuracy adjusted", 
                             "p_acc_pear"="phenomic accuracy Pearson", 
-                            "p_acc_gcor"="phenomic accuracy corrected")) + 
+                            "p_acc_gcor"="phenomic accuracy adjusted")) + 
+    ylim(0, 1) + 
     theme_minimal_grid(font_size=10) + 
     theme(axis.title.x = element_blank(),
           axis.text.x = element_blank(),
           axis.ticks.x = element_blank(), 
           legend.position="bottom") + 
-    ggtitle(paste("trait: ", traits[i], sep=""))
+    ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
 )
   
   # save_plot(paste("estimate_accuracy/plots/", traits[i], "_accuracy.pdf", sep=""), 
@@ -266,5 +314,123 @@ dev.off()
 #           p1, 
 #           base_width=6.5)
 
-  
-  
+
+
+
+
+
+# 
+# for (i in 1:ncol(Phenotyping_Poplar)){
+#   for (j in 1:5){
+#     tryCatch({
+#       selected = five_folds[[j]][!is.na(Phenotyping_Poplar[five_folds[[j]], colnames(Phenotyping_Poplar)[i]])]
+#       
+#       Y <- data.frame(ID=rownames(Genotyping_Poplar[selected, ]), 
+#                       obs=Phenotyping_Poplar[selected, colnames(Phenotyping_Poplar)[i]])
+#       kin = kinship[Y$ID, Y$ID]
+#       rownames(kin) = Y$ID
+#       colnames(kin) = Y$ID
+#       
+#       gmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                            Genotyping_Poplar[-selected, ])
+#       Y$pred = Genotyping_Poplar[Y$ID, ] %*% gmodel$u
+#       
+#       accuracy_table_five$g_acc_pear[((i-1)*5 + j)] = cor(Y$obs, Y$pred)
+#       accuracy_table_five$g_acc_gcor[((i-1)*5 + j)] = 
+#         estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+#       
+#       Y2 = Y
+#       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
+#         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                              NIRS_NormDer_Wood_Poplar_ORL[-selected, ])
+#         Y2$pred = NIRS_NormDer_Wood_Poplar_ORL[selected, ] %*% pmodel$u
+#       } else {
+#         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                              NIRS_NormDer_Wood_Poplar_SAV[-selected, ])
+#         Y2$pred = NIRS_NormDer_Wood_Poplar_SAV[selected, ] %*% pmodel$u
+#       }
+#       
+#       accuracy_table_five$p_acc_pear[((i-1)*5 + j)] = cor(Y2$obs, Y2$pred)
+#       accuracy_table_five$p_acc_gcor[((i-1)*5 + j)] = 
+#         estimate_gcor(data=Y2, Knn=kin, method="MCMCglmm", normalize=F)[1]
+#       
+#     }, error=function(e){cat(i, j, "\n", "Error:", conditionMessage(e), "\n")})
+#   }
+# }
+# 
+# for (i in 1:ncol(Phenotyping_Poplar)){
+#   for (j in 1:4){
+#     tryCatch({
+#       selected = four_folds[[j]][!is.na(Phenotyping_Poplar[four_folds[[j]], colnames(Phenotyping_Poplar)[i]])]
+#       
+#       Y <- data.frame(ID=rownames(Genotyping_Poplar[selected, ]), 
+#                       obs=Phenotyping_Poplar[selected, colnames(Phenotyping_Poplar)[i]])
+#       kin = kinship[Y$ID, Y$ID]
+#       rownames(kin) = Y$ID
+#       colnames(kin) = Y$ID
+#       
+#       gmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                            Genotyping_Poplar[-selected, ])
+#       Y$pred = Genotyping_Poplar[Y$ID, ] %*% gmodel$u
+#       
+#       accuracy_table_four$g_acc_pear[((i-1)*4 + j)] = cor(Y$obs, Y$pred)
+#       accuracy_table_four$g_acc_gcor[((i-1)*4 + j)] = 
+#         estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+#       
+#       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
+#         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                              NIRS_NormDer_Wood_Poplar_ORL[-selected, ])
+#         Y$pred = NIRS_NormDer_Wood_Poplar_ORL[selected, ] %*% pmodel$u
+#       } else {
+#         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                              NIRS_NormDer_Wood_Poplar_SAV[-selected, ])
+#         Y$pred = NIRS_NormDer_Wood_Poplar_SAV[selected, ] %*% pmodel$u
+#       }
+#       
+#       accuracy_table_four$p_acc_pear[((i-1)*4 + j)] = cor(Y$obs, Y$pred)
+#       accuracy_table_four$p_acc_gcor[((i-1)*4 + j)] = 
+#         estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+#       
+#     }, error=function(e){cat(i, j, "\n", "Error:", conditionMessage(e), "\n")})
+#   }
+# }
+# 
+# for (i in 1:ncol(Phenotyping_Poplar)){
+#   for (j in 1:3){
+#     tryCatch({
+#       selected = three_folds[[j]][!is.na(Phenotyping_Poplar[three_folds[[j]], 
+#                                                             colnames(Phenotyping_Poplar)[i]])]
+#       
+#       Y <- data.frame(ID=rownames(Genotyping_Poplar[selected, ]), 
+#                       obs=Phenotyping_Poplar[selected, colnames(Phenotyping_Poplar)[i]])
+#       kin = kinship[Y$ID, Y$ID]
+#       rownames(kin) = Y$ID
+#       colnames(kin) = Y$ID
+#       
+#       gmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                            Genotyping_Poplar[-selected, ])
+#       Y$pred = Genotyping_Poplar[Y$ID, ] %*% gmodel$u
+#       
+#       accuracy_table_three$g_acc_pear[((i-1)*3 + j)] = cor(Y$obs, Y$pred)
+#       accuracy_table_three$g_acc_gcor[((i-1)*3 + j)] = 
+#         estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+#       
+#       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
+#         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                              NIRS_NormDer_Wood_Poplar_ORL[-selected, ])
+#         Y$pred = NIRS_NormDer_Wood_Poplar_ORL[selected, ] %*% pmodel$u
+#       } else {
+#         pmodel = mixed.solve(Phenotyping_Poplar[-selected, colnames(Phenotyping_Poplar)[i]], 
+#                              NIRS_NormDer_Wood_Poplar_SAV[-selected, ])
+#         Y$pred = NIRS_NormDer_Wood_Poplar_SAV[selected, ] %*% pmodel$u
+#       }
+#       
+#       accuracy_table_three$p_acc_pear[((i-1)*3 + j)] = cor(Y$obs, Y$pred)
+#       accuracy_table_three$p_acc_gcor[((i-1)*3 + j)] = 
+#         estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+#       
+#     }, error=function(e){cat(i, j, "\n", "Error:", conditionMessage(e), "\n")})
+#   }
+# }
+# 
+ 

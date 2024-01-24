@@ -34,14 +34,16 @@ Phenotyping_HeadingDate_Wheat <- Phenotyping_HeadingDate_Wheat[, -1]
 Phenotyping_Wheat <- cbind(Phenotyping_GrainYield_Wheat[, 1:2], Phenotyping_HeadingDate_Wheat[, 1:2])
 colnames(Phenotyping_Wheat) <- c("IRR_GrainYield", "DRY_GrainYield", "IRR_HeadingDate", "DRY_HeadingDate")
 
-Genotyping_Wheat <- scale(Genotyping_Wheat)
+# Genotyping_Wheat <- scale(Genotyping_Wheat)
+Genotyping_Wheat <- as.matrix(Genotyping_Wheat)
+Genotyping_Wheat <- Genotyping_Wheat*2 - 1
 NIRS_NormDer_Grain_DRY_Wheat <- scale(NIRS_NormDer_Grain_DRY_Wheat)
 NIRS_NormDer_Grain_IRR_Wheat <- scale(NIRS_NormDer_Grain_IRR_Wheat)
 NIRS_NormDer_Leaf_DRY_Wheat <- scale(NIRS_NormDer_Leaf_DRY_Wheat)
 NIRS_NormDer_Leaf_IRR_Wheat <- scale(NIRS_NormDer_Leaf_IRR_Wheat)
 str(Phenotyping_Wheat)
 
-kinship <- Genotyping_Wheat %*% t(Genotyping_Wheat) / nrow(Genotyping_Wheat)
+kinship <- A.mat(Genotyping_Wheat)
 
 set.seed(1) 
 five_folds <- sample(1:nrow(Genotyping_Wheat), nrow(Genotyping_Wheat))
@@ -61,7 +63,8 @@ accuracy_table_five <- data.frame(fold="five folds",
                                   p_acc_pear_grain=NA, 
                                   p_acc_pear_leaf=NA, 
                                   p_acc_gcor_grain=NA, 
-                                  p_acc_gcor_leaf=NA)
+                                  p_acc_gcor_leaf=NA, 
+                                  h2=NA)
 for (i in 1:nrow(accuracy_table_five)){
   tryCatch({
     trait = accuracy_table_five$trait[i]
@@ -80,8 +83,12 @@ for (i in 1:nrow(accuracy_table_five)){
     Y$pred = Genotyping_Wheat[Y$ID, ] %*% gmodel$u
     
     accuracy_table_five$g_acc_pear[i] = cor(Y$obs, Y$pred)
-    accuracy_table_five$g_acc_gcor[i] = 
-      estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+    
+    K = kinship[-selected, -selected]
+    gmodel2 = mixed.solve(Phenotyping_Wheat[-selected, trait], K=K)
+    h2 = gmodel2$Vu / (gmodel2$Vu+gmodel2$Ve)
+    accuracy_table_five$g_acc_gcor[i] = accuracy_table_five$g_acc_pear[i] / sqrt(h2)
+    accuracy_table_five$h2[i] = h2
     
     if (grepl("IRR", trait)){
       pmodel_grain = mixed.solve(Phenotyping_Wheat[-selected, trait], 
@@ -142,8 +149,12 @@ for (i in 1:nrow(accuracy_table_four)){
     Y$pred = Genotyping_Wheat[Y$ID, ] %*% gmodel$u
     
     accuracy_table_four$g_acc_pear[i] = cor(Y$obs, Y$pred)
-    accuracy_table_four$g_acc_gcor[i] = 
-      estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+    
+    K = kinship[-selected, -selected]
+    gmodel2 = mixed.solve(Phenotyping_Wheat[-selected, trait], K=K)
+    h2 = gmodel2$Vu / (gmodel2$Vu+gmodel2$Ve)
+    accuracy_table_four$g_acc_gcor[i] = accuracy_table_four$g_acc_pear[i] / sqrt(h2)
+    accuracy_table_four$h2[i] = h2
     
     if (grepl("IRR", trait)){
       pmodel_grain = mixed.solve(Phenotyping_Wheat[-selected, trait], 
@@ -204,8 +215,12 @@ for (i in 1:nrow(accuracy_table_three)){
     Y$pred = Genotyping_Wheat[Y$ID, ] %*% gmodel$u
     
     accuracy_table_three$g_acc_pear[i] = cor(Y$obs, Y$pred)
-    accuracy_table_three$g_acc_gcor[i] = 
-      estimate_gcor(data=Y, Knn=kin, method="MCMCglmm", normalize=F)[1]
+    
+    K = kinship[-selected, -selected]
+    gmodel2 = mixed.solve(Phenotyping_Wheat[-selected, trait], K=K)
+    h2 = gmodel2$Vu / (gmodel2$Vu+gmodel2$Ve)
+    accuracy_table_three$g_acc_gcor[i] = accuracy_table_three$g_acc_pear[i] / sqrt(h2)
+    accuracy_table_three$h2[i] = h2
     
     if (grepl("IRR", trait)){
       pmodel_grain = mixed.solve(Phenotyping_Wheat[-selected, trait], 
@@ -254,11 +269,19 @@ for (i in 1:nrow(accuracy_table)){
     accuracy_table[i, 4:9]
 }
 accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
+h2_table <- aggregate(accuracy_table$h2, list(accuracy_table$trait), mean)
+rownames(h2_table) <- h2_table$Group.1
+accuracy_table_long$h2 <- h2_table[accuracy_table_long$trait, "x"]
 accuracy_table_long <- na.omit(accuracy_table_long)
+accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
+accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear_grain", 
+                                                                      "p_acc_pear_leaf", "g_acc_gcor", 
+                                                                      "p_acc_gcor_grain", "p_acc_gcor_leaf"))
 
 
 
 traits <- unique(accuracy_table_long$trait)
+h2 <- unique(accuracy_table_long$h2)
 
 pdf(paste("estimate_accuracy2/plots/", "accuracy.pdf", sep=""), width=14)
 for (i in 1:length(traits)){
@@ -277,7 +300,7 @@ for (i in 1:length(traits)){
                 axis.text.x = element_blank(),
                 axis.ticks.x = element_blank(), 
                 legend.position="bottom") + 
-          ggtitle(paste("trait: ", traits[i], sep=""))
+          ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
   )
 }
 dev.off()
