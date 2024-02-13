@@ -257,6 +257,7 @@ accuracy_table_three <- readRDS("estimate_accuracy/accuracy_table_three.rds")
 
 
 accuracy_table <- rbind(rbind(accuracy_table_five, accuracy_table_four), accuracy_table_three)
+
 accuracy_table_long <- accuracy_table[rep(1:nrow(accuracy_table), each=4), 1:3]
 accuracy_table_long$type <- rep(colnames(accuracy_table)[4:7], nrow(accuracy_table))
 accuracy_table_long$accuracy <- NA
@@ -272,6 +273,13 @@ accuracy_table_long <- na.omit(accuracy_table_long)
 accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
 accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear", 
                                                                       "g_acc_gcor", "p_acc_gcor"))
+
+accuracy_table_long$adjustment <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "p_acc_pear"), 
+                                         "before adjustment", "after adjustment")
+accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment, 
+                                         levels=c("before adjustment", "after adjustment"))
+accuracy_table_long$prediction <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
+                                         "genomic", "phenomic")
 
 
 
@@ -298,6 +306,35 @@ for (i in 1:length(traits)){
           legend.position="bottom") + 
     ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
 )
+  
+  # save_plot(paste("estimate_accuracy/plots/", traits[i], "_accuracy.pdf", sep=""), 
+  #           p1, 
+  #           base_width=6.5)
+  
+}
+dev.off()
+
+
+
+
+accuracy_table_long <- accuracy_table_long[accuracy_table_long$fold == "five folds", ]
+
+pdf(paste("estimate_accuracy/plots/", "accuracy2.pdf", sep=""), width=8, height=6)
+for (i in 1:length(traits)){
+  print(
+    ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i] , ], 
+           aes(x=prediction, y=accuracy, fill=prediction)) + 
+      geom_boxplot() + 
+      facet_wrap(~adjustment) + 
+      
+      ylim(0, 1) + 
+      theme_minimal_grid(font_size=10) + 
+      theme(axis.title.x = element_blank(),
+            axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(), 
+            legend.position="bottom") + 
+      ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
+  )
   
   # save_plot(paste("estimate_accuracy/plots/", traits[i], "_accuracy.pdf", sep=""), 
   #           p1, 
