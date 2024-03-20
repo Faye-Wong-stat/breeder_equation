@@ -1,3 +1,4 @@
+# Renaud Rincent on wheat
 setwd("~/breeder_equation_project/")
 source("codes/Estimate_gcor_prediction.R")
 library(rrBLUP)
@@ -257,6 +258,9 @@ for (i in 1:nrow(accuracy_table_three)){
 saveRDS(accuracy_table_five, "estimate_accuracy2/accuracy_table_five.rds")
 saveRDS(accuracy_table_four, "estimate_accuracy2/accuracy_table_four.rds")
 saveRDS(accuracy_table_three, "estimate_accuracy2/accuracy_table_three.rds")
+accuracy_table_five <- readRDS("estimate_accuracy2/accuracy_table_five.rds")
+accuracy_table_four <- readRDS("estimate_accuracy2/accuracy_table_four.rds")
+accuracy_table_three <- readRDS("estimate_accuracy2/accuracy_table_three.rds")
 
 
 
@@ -277,6 +281,14 @@ accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
 accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear_grain", 
                                                                       "p_acc_pear_leaf", "g_acc_gcor", 
                                                                       "p_acc_gcor_grain", "p_acc_gcor_leaf"))
+accuracy_table_long$adjustment <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "p_acc_pear"), 
+                                         "before adjustment", "after adjustment")
+accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment, 
+                                         levels=c("before adjustment", "after adjustment"))
+accuracy_table_long$prediction <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
+                                         "genomic", "phenomic")
+
+saveRDS(accuracy_table_long, "estimate_accuracy2/accuracy_table_long.rds")
 
 
 

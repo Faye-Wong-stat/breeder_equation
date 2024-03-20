@@ -1,3 +1,4 @@
+# Renaud Rincent on poplar
 setwd("~/breeder_equation_project/")
 source("codes/Estimate_gcor_prediction.R")
 library(rrBLUP)
@@ -280,6 +281,8 @@ accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment,
                                          levels=c("before adjustment", "after adjustment"))
 accuracy_table_long$prediction <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
                                          "genomic", "phenomic")
+
+saveRDS(accuracy_table_long, "estimate_accuracy/accuracy_table_long.rds")
 
 
 
