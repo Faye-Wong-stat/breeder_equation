@@ -26,14 +26,14 @@ This R chunk is used to set up some options.
 ```{r setup, include=FALSE}
 ##`
 ## https://github.com/vspinu/polymode/issues/147#issuecomment-399745611
-R.v.maj <- as.numeric(R.version$major)
-R.v.min.1 <- as.numeric(strsplit(R.version$minor, "\\.")[[1]][1])
-if(R.v.maj < 2 || (R.v.maj == 2 && R.v.min.1 < 15))
-  stop("requires R >= 2.15", call.=FALSE)
-
-suppressPackageStartupMessages(library(knitr))
-opts_chunk$set(echo=TRUE, warning=TRUE, message=TRUE, cache=FALSE, fig.align="center")
-opts_knit$set(progress=TRUE, verbose=TRUE)
+# R.v.maj <- as.numeric(R.version$major)
+# R.v.min.1 <- as.numeric(strsplit(R.version$minor, "\\.")[[1]][1])
+# if(R.v.maj < 2 || (R.v.maj == 2 && R.v.min.1 < 15))
+#   stop("requires R >= 2.15", call.=FALSE)
+# 
+# suppressPackageStartupMessages(library(knitr))
+# opts_chunk$set(echo=TRUE, warning=TRUE, message=TRUE, cache=FALSE, fig.align="center")
+# opts_knit$set(progress=TRUE, verbose=TRUE)
 ```
 
 
@@ -52,10 +52,8 @@ In this script, we pre-process raw spectrum data.
 
 ```{r overview}
 project.name <- "phenomic_pred"
-# if(Sys.info()["user"] %in% c("brault", "charlotte")){
-#   project.dir <- paste0("~/work/", project.name)
-# } 
-project.dir <- "~/breeder_equation_project/data/interest_of_phenomic_prediction_as_an_alternative_to_genomic_predition/script/phenomic_pred/"
+project.dir <- paste0("~/breeder_equation_project/data/interest_of_phenomic_prediction/", 
+                      project.name)
 data.dir <- paste0(project.dir, "/data")
 results.dir <- paste0(project.dir, "/results")
 src.dir <- paste0(project.dir,"/src")
@@ -81,12 +79,12 @@ suppressPackageStartupMessages(library(rnirs)) # on GitHub
 suppressPackageStartupMessages(library(doParallel)) # for parallelization
 suppressPackageStartupMessages(library(foreach)) # for parallelization
 suppressPackageStartupMessages(library(snow)) # for creating cluster
-source(file = paste0(src.dir,"/PS_functions.R")) # for reading asd files
+source(paste0(src.dir,"/PS_functions.R")) # for reading asd files
 source(paste0(src.dir,"/ortho.nirs.R")) # ortho.nirs
 
-nb.cores <- 5
-cl <- makeSOCKcluster(nb.cores)
-registerDoParallel(cl)
+# nb.cores <- 5
+# cl <- makeSOCKcluster(nb.cores)
+# registerDoParallel(cl)
 ```
 
 This R chunk is used to assess how much time it takes to execute the R code in this document until the end:
@@ -180,11 +178,11 @@ head(sample.infop279)
 ## Plot raw spectrum
 
 ```{r graph nirs, fig.height=4.5, fig.width = 7}
-matplot(x = as.integer(colnames(nirs)),
-        y = t(nirs),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - raw spectrum")
+# matplot(x = as.integer(colnames(nirs)),
+#         y = t(nirs),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - raw spectrum")
 ```
 
 ## Remove jump corresponding to change in detector
@@ -193,11 +191,11 @@ We use the following function *adj_asd*:
 
 ```{r spliceCorrection, fig.height=4.5, fig.width = 7}
 nirs <- adj_asd(Xi = nirs, iadj  = c(651, 1451))
-matplot(x = as.integer(colnames(nirs)),
-        y = t(nirs),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - Remove jump")
+# matplot(x = as.integer(colnames(nirs)),
+#         y = t(nirs),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - Remove jump")
 ```
 
 ## Cut the end of the sprectrum (50 nm visible side)
@@ -205,11 +203,11 @@ matplot(x = as.integer(colnames(nirs)),
 ```{r spectra cut, fig.height=4.5, fig.width = 7}
 nirs.cut <- nirs[, as.integer(colnames(nirs)) >= 400]
 dim(nirs.cut)
-matplot(x = as.integer(colnames(nirs.cut)),
-        y = t(nirs.cut),
-        type = 'l', lty = 1,
-        xlab = "wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - cut")
+# matplot(x = as.integer(colnames(nirs.cut)),
+#         y = t(nirs.cut),
+#         type = 'l', lty = 1,
+#         xlab = "wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - cut")
 ```
 
 ## Average of 4 scans done on each sample
@@ -228,11 +226,11 @@ nirs.meanCtl <- apply(nirs.cut[sample.infoCtl$NIRS.nb,], 2, function(x) {
 nirs.mean <- rbind(nirs.meanp279, nirs.meanCtl)
 
 
-matplot(x = as.integer(colnames(nirs.mean)),
-        y = t(nirs.mean),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - mean")
+# matplot(x = as.integer(colnames(nirs.mean)),
+#         y = t(nirs.mean),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - mean")
 ```
 
 # Correct for work session effect with REP-ASCA
@@ -257,11 +255,11 @@ dim(out$loadings)
 dim(out$corrected)
 nirs.mean.corr <- out$corrected
 
-matplot(x = as.integer(colnames(nirs.mean.corr)),
-        y = t(nirs.mean.corr),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - mean after correction")
+# matplot(x = as.integer(colnames(nirs.mean.corr)),
+#         y = t(nirs.mean.corr),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - mean after correction")
 nirs.mean.corr <- nirs.mean # don't apply correction for the moment
 ```
 
@@ -295,11 +293,11 @@ Apply this on corrected spectra.
 nirs.smooth <- t(apply(nirs.mean.corr, 1, function(x) {
   sgolayfilt(x, p = 1, n = 21, m = 0, ts = 1)}))
 colnames(nirs.smooth) <- colnames(nirs.mean.corr)
-matplot(x = as.integer(colnames(nirs.smooth)),
-        y = t(nirs.smooth),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - smooth")
+# matplot(x = as.integer(colnames(nirs.smooth)),
+#         y = t(nirs.smooth),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - smooth")
 ```
 
 ## Normalisation (SNV)
@@ -307,11 +305,11 @@ matplot(x = as.integer(colnames(nirs.smooth)),
 ```{r norm, fig.height=4, fig.width=7}
 nirs.snv <- t(scale(t(nirs.smooth)))
 
-matplot(x = as.integer(colnames(nirs.snv)),
-        y = t(nirs.snv),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - snv")
+# matplot(x = as.integer(colnames(nirs.snv)),
+#         y = t(nirs.snv),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - snv")
 ```
 
 ## Detrend
@@ -320,11 +318,11 @@ matplot(x = as.integer(colnames(nirs.snv)),
 nirs.dt <- prospectr::detrend(X = nirs.smooth,
                               wav = as.integer(colnames(nirs.smooth)))
 
-matplot(x = as.integer(colnames(nirs.dt)),
-        y = t(nirs.dt),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - detrend")
+# matplot(x = as.integer(colnames(nirs.dt)),
+#         y = t(nirs.dt),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - detrend")
 ```
 
 ## Derivative 1
@@ -336,11 +334,11 @@ nirs.der1 <- t(apply(nirs.snv, 1, function(x) {
   sgolayfilt(x, p = 2, n = 41, m = 1, ts = 1)}))
 
 colnames(nirs.der1) <- colnames(nirs.snv)
-matplot(x = as.integer(colnames(nirs.der1)),
-        y = t(nirs.der1),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - der1")
+# matplot(x = as.integer(colnames(nirs.der1)),
+#         y = t(nirs.der1),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - der1")
 ```
 
 ## Derivative 2
@@ -350,11 +348,11 @@ nirs.der2 <- t(apply(nirs.snv, 1, function(x) {
   sgolayfilt(x, p = 3, n = 81, m = 2, ts = 1)}))
 
 colnames(nirs.der2) <- colnames(nirs.snv)
-matplot(x = as.integer(colnames(nirs.der2)),
-        y = t(nirs.der2),
-        type = 'l', lty = 1,
-        xlab = "Wavelength (nm)", ylab = "Reflectance",
-        main = "Wood NIRS p279 2020 - der2")
+# matplot(x = as.integer(colnames(nirs.der2)),
+#         y = t(nirs.der2),
+#         type = 'l', lty = 1,
+#         xlab = "Wavelength (nm)", ylab = "Reflectance",
+#         main = "Wood NIRS p279 2020 - der2")
 ```
 
 ## List of pre-process spectra
