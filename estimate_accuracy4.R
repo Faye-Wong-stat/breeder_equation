@@ -2,6 +2,7 @@
 setwd("~/breeder_equation_project/")
 source("codes/Estimate_gcor_prediction.R")
 library(rrBLUP)
+library(BGLR)
 library(ggplot2)
 library(cowplot)
 
@@ -9,27 +10,49 @@ library(cowplot)
 
 data_path <- "data/hyperspectral_reflectance_derived_relationship_matrices/"
 
+
+data_DTHD <- read.csv(paste(data_path, "Krause_et_al_Yield_BLUPs_DTHD.csv", sep=""), row.names = 1, 
+                      check.names = F)
+
+
 # load pedigree relationship matrix
-pedi_rel <- read.csv(paste(data_path, "Krause_et_al_2018_Pedigree.csv", sep=""), row.names = 1, check.names = F)
+pedi_rel <- read.csv(paste(data_path, "Krause_et_al_2018_Pedigree.csv", sep=""), row.names = 1, 
+                     check.names = F)
 dim(pedi_rel)
 # [1] 3771 3771
+pedi_rel <- as.matrix(pedi_rel)
+
+
 
 # load the phenomic data
-# pheno_indi <- read.csv(paste(data_path, "Krause_et_al_2018_Hyper_BLUEs_Individual_Time_Points.csv", 
-#                              sep=""), check.names = F)
-# dim(pheno_indi)
-# # [1] 133639     66
 pheno_stages <- read.csv(paste(data_path, "Krause_et_al_2018_Hyper_BLUEs_Growth_Stages_VEG_HEAD_GF_ALL.csv", 
                                sep=""), check.names = F)
 dim(pheno_stages)
 # [1] 65271    66
+
 phenomic <- pheno_stages[pheno_stages$Growth_Stage=="ALL", ]
 dim(phenomic)
 # [1] 17822    66
-str(phenomic)
+# str(phenomic)
 phenomic$GID <- as.character(phenomic$GID)
 length(unique(phenomic$GID))
 # [1] 3771
+
+phenomic$site_year <- paste(phenomic$Breeding_Cycle, phenomic$Managed_Treatment, sep="_")
+phenomic <- phenomic[, c(1, 67, 5:66)]
+dim(phenomic)
+# [1] 17822    64
+length(unique(interaction(phenomic$GID, phenomic$site_year)))
+# [1] 17822
+phenomic[, 3:64] <- scale(phenomic[, 3:64])
+
+phenomic_rel <- as.matrix(phenomic[, 3:64]) %*% t(as.matrix(phenomic[, 3:64]))
+phenomic_rel <- phenomic_rel/62
+
+saveRDS(phenomic_rel, "phenomic_relationship.rds")
+phenomic_rel <- readRDS("phenomic_relationship.rds")
+
+
 
 # load the phenotypic data
 phenotypes <- read.csv(paste(data_path, "Krause_et_al_2018_Yield_BLUEs.csv", sep=""), check.names = F)
@@ -40,26 +63,117 @@ phenotypes$GID <- as.character(phenotypes$GID)
 length(unique(phenotypes$GID))
 # [1] 3771
 
+phenotypes$site_year <- paste(phenotypes$`Breeding Cycle`, phenotypes$Managed_Treatment, sep="_")
+phenotypes <- phenotypes[, c(1, 5, 4)]
+dim(phenotypes)
+# [1] 18855     3
+length(unique(interaction(phenotypes$GID, phenotypes$site_year)))
+# [1] 18855
+
+sum(! unique(interaction(phenomic$GID, phenomic$site_year)) %in% 
+      unique(interaction(phenotypes$GID, phenotypes$site_year)))
+# [1] 0
+
 
 
 # there are more phenotype observations than phenomic observations
 # which phenomic observation is not present in phenotype data?
-# this is taking too long, don't do it
-# for (i in 1:nrow(phenomic)){
-#   if (!any( apply(phenotypes[, c("GID", "Managed_Treatment")], 1, 
-#                   setequal, phenomic[, c("GID", "Managed_Treatment")]) )){
-#     print(i)
-#   }
+
+# select only the phenotypes with combinations shown in phenomic data
+phenomic$ID <- paste(phenomic$GID, phenomic$site_year, sep=".")
+phenotypes$ID <- paste(phenotypes$GID, phenotypes$site_year, sep=".")
+# which phenomic data missing? 
+missing_phenomic <- phenotypes[! phenotypes$ID %in% phenomic$ID, ]
+dim(missing_phenomic)
+# [1] 1033    4
+phenotypes <- phenotypes[phenotypes$ID %in% phenomic$ID, ]
+phenotypes <- phenotypes[match(phenotypes$ID, phenomic$ID), ]
+phenotypes <- phenotypes[, ! colnames(phenotypes) %in% "ID"]
+phenomic <- phenomic[, ! colnames(phenomic) %in% "ID"]
+
+
+
+# # make the fixed effect design matrix
+# site_year <- unique(phenotypes$site_year)
+# fixed_effect <- matrix(NA, nrow=nrow(phenotypes), ncol=18)
+# # fixed_effect <- as.data.frame(fixed_effect)
+# for (i in 1:nrow(phenotypes)) {
+#   fixed_effect[i, ] = as.numeric(phenotypes$site_year[i] == site_year[2:19])
 # }
+# dim(fixed_effect)
+# # [1] 17822    18
 
 
 
-# treatments 
-treatments <- unique(phenotypes$Managed_Treatment)
+# set.seed(1)
+# five_folds <- sample(1:dim(phenotypes)[1], dim(phenotypes)[1]) ### 3, 4, 5 folds
+# five_folds <- split(five_folds, 1:5)
+# four_folds <- sample(1:dim(phenotypes)[1], dim(phenotypes)[1])
+# four_folds <- split(four_folds, 1:4)
+# three_folds <- sample(1:dim(phenotypes)[1], dim(phenotypes)[1])
+# three_folds <- split(three_folds, 1:3)
+
+site_year <- unique(phenotypes$site_year)
+# No_geno <- rep(NA, 19)
+# for (i in 1:19){
+#   No_geno[i] = length(unique(phenotypes[phenotypes$site_year == site_year[i], "GID"]))
+# }
+accuracy_table <- data.frame(site_year = site_year, 
+                             g_acc_pear=NA, 
+                             g_acc_gcor=NA, 
+                             p_acc_pear=NA, 
+                             p_acc_gcor=NA, 
+                             h2 = NA)
+
+set.seed(1)
+for (i in 1:19){
+  tryCatch({
+    testing_data = phenotypes[phenotypes$site_year == site_year[i], ]
+  training_data = phenotypes[phenotypes$site_year != site_year[i], ]
+  
+  chol_K = t(chol(pedi_rel))
+  ZK = chol_K[training_data$GID, ]
+  
+  gmodel = BGLR(y = training_data$Grain_Yield_BLUE, 
+                ETA = list(list(~factor(site_year), data=training_data, model="FIXED"), 
+                           list(X=ZK, model="BRR")), 
+                verbose=F, 
+                saveAt="estimate_accuracy4/")
+  
+  Y = data.frame(ID = testing_data[, "GID"], 
+                 obs = testing_data[, "Grain_Yield_BLUE"])
+  Y$pred = gmodel$ETA[[2]]$b[Y$ID]
+  accuracy_table[i, "g_acc_pear"] = cor(Y$pred, Y$obs)
+  
+  h2 = gmodel$ETA[[2]]$varB / var(Y$obs)
+  accuracy_table[i, "g_acc_gcor"] = accuracy_table[i, "g_acc_pear"] / sqrt(h2)
+  accuracy_table[i, "h2"] = h2
+  
+  
+  
+  pmodel = BGLR(y = training_data$Grain_Yield_BLUE, 
+                ETA = list(list(~factor(site_year), data=training_data, model="FIXED"), 
+                           list(X=phenomic[phenotypes$site_year != site_year[i], 3:64], model="BRR")), 
+                verbose=F, 
+                saveAt="estimate_accuracy4/")
+  
+  Y2 = Y
+  Y2$pred = as.matrix(phenomic[phenotypes$site_year == site_year[i], 3:64]) %*% pmodel$ETA[[2]]$b
+  
+  accuracy_table[i, "p_acc_pear"] = cor(Y2$pred, Y2$obs)
+  
+  kin = pedi_rel[testing_data$GID, testing_data$GID]
+  rownames(kin) = Y2$ID
+  colnames(kin) = Y2$ID
+  
+  accuracy_table[i, "p_acc_gcor"] = estimate_gcor(data=Y2, Knn=kin, method="MCMCglmm", normalize=F)[1]
+  }, error=function(e){cat(i, "\n", "Error:", conditionMessage(e), "\n")})
+}
+
+saveRDS(accuracy_table, "estimate_accuracy4/accuracy_table.rds")
+accuracy_table <- readRDS("estimate_accuracy4/accuracy_table.rds")
 
 
-
-geno_model
 
 
 

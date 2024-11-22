@@ -33,17 +33,24 @@ sum(heter_freq>0.1)
 
 geno <- geno[, ifelse(minor_alle_freq<0.05, F, T)]
 geno <- as.matrix(geno)
+dim(geno)
+# [1]  3442 18013
 
 saveRDS(geno, "estimate_accuracy5/geno.rds")
-# geno <- readRDS("estimate_accuracy5/geno.rds")
+geno <- readRDS("estimate_accuracy5/geno.rds")
 
 kinship <- A.mat(geno-1)
 saveRDS(kinship, "estimate_accuracy5/kinship.rds")
+kinship <- readRDS("estimate_accuracy5/kinship.rds")
 
 
 
 # organize phenotyic/phenomic data
-model <- lmer(grain_yield ~ fullsamplename + (1|year) + (1|nursery), pheno)
+dim(pheno)
+# [1] 4347   44
+length(unique(pheno$fullsamplename))
+# [1] 3442
+model <- lmer(grain_yield ~ fullsamplename + (1|environment), pheno)
 emm_summ <- summary(emmeans(model, "fullsamplename"))
 
 phenotype <- data.frame(grain_yield = emm_summ[, 2][match(rownames(geno), emm_summ[, 1])])
@@ -51,11 +58,11 @@ rownames(phenotype) <- emm_summ[, 1][match(rownames(geno), emm_summ[, 1])]
 phenotype <- as.matrix(phenotype)
 
 saveRDS(phenotype, "estimate_accuracy5/phenotype.rds")
-# phenotype <- readRDS("estimate_accuracy5/phenotype.rds")
+phenotype <- readRDS("estimate_accuracy5/phenotype.rds")
 
 models <- list()
 for (i in colnames(pheno[, 21:44])){
-  models[[i]] = lmer(get(i) ~ fullsamplename + (1|year), pheno)
+  models[[i]] = lmer(get(i) ~ fullsamplename + (1|environment), pheno)
 }
 emm_summs <- list()
 for (i in 1:length(models)){
@@ -63,7 +70,7 @@ for (i in 1:length(models)){
 }
 
 saveRDS(emm_summs, "estimate_accuracy5/emm_summs.rds")
-# emm_summs <- readRDS("estimate_accuracy5/emm_summs.rds")
+emm_summs <- readRDS("estimate_accuracy5/emm_summs.rds")
 
 phenomic <- data.frame(matrix(NA, nrow=nrow(emm_summs[[1]]), ncol=length(emm_summs)+1))
 phenomic[, 1:2]  <- emm_summs[[1]][, 1:2]
@@ -78,13 +85,16 @@ phenomic <- phenomic[, -1]
 phenomic <- as.matrix(phenomic)
 
 saveRDS(phenomic, "estimate_accuracy5/phenomic.rds")
+phenomic <- readRDS("estimate_accuracy5/phenomic.rds")
 
 
 
 # genomic prediction
 set.seed(1) 
-five_folds <- sample(1:nrow(geno), nrow(geno))
-five_folds <- split(five_folds, 1:5)
+five_folds <- vector(mode="list", length=30)
+five_folds <- lapply(five_folds, FUN=function(x){
+  sample(1:nrow(geno), round(nrow(geno)/5))
+})
 
 
 
