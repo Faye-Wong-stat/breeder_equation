@@ -61,26 +61,26 @@ kinship <- A.mat(Genotyping_Poplar)
 set.seed(1) 
 ORL_names <- colnames(Phenotyping_Poplar)[grepl("ORL", colnames(Phenotyping_Poplar))]
 SAV_names <- colnames(Phenotyping_Poplar)[!grepl("ORL", colnames(Phenotyping_Poplar))]
-five_folds <- vector(mode="list", length=ncol(Phenotyping_Poplar))
-five_folds <- lapply(five_folds, FUN=function(x){
-  vector(mode="list", length=20)
-})
-for (i in 1:ncol(Phenotyping_Poplar)){
-  five_folds[[i]] = lapply(five_folds[[i]], FUN=function(x){
-    sample(1:dim(Phenotyping_Poplar)[1], round(dim(Phenotyping_Poplar)[1]/5))
-  })
-}
+# five_folds <- vector(mode="list", length=ncol(Phenotyping_Poplar))
+# five_folds <- lapply(five_folds, FUN=function(x){
+#   vector(mode="list", length=20)
+# })
+# for (i in 1:ncol(Phenotyping_Poplar)){
+#   five_folds[[i]] = lapply(five_folds[[i]], FUN=function(x){
+#     sample(1:dim(Phenotyping_Poplar)[1], round(dim(Phenotyping_Poplar)[1]/5))
+#   })
+# }
 
-#   sample(1:dim(Phenotyping_Poplar)[1], dim(Phenotyping_Poplar)[1]) ### 3, 4, 5 folds
-# five_folds <- split(five_folds, 1:5)
+five_folds <- sample(1:dim(Phenotyping_Poplar)[1], dim(Phenotyping_Poplar)[1]) ### 3, 4, 5 folds
+five_folds <- split(five_folds, 1:5)
 # four_folds <- sample(1:dim(Phenotyping_Poplar)[1], dim(Phenotyping_Poplar)[1])
 # four_folds <- split(four_folds, 1:4)
 # three_folds <- sample(1:dim(Phenotyping_Poplar)[1], dim(Phenotyping_Poplar)[1])
 # three_folds <- split(three_folds, 1:3)
 
 accuracy_table_five <- data.frame(fold="five folds", 
-                             trait=rep(colnames(Phenotyping_Poplar), each=20), 
-                             jth_fold=rep(1:20, length(colnames(Phenotyping_Poplar))), 
+                             trait=rep(colnames(Phenotyping_Poplar), each=5), 
+                             jth_fold=rep(1:5, length(colnames(Phenotyping_Poplar))), 
                              g_acc_pear=NA, 
                              g_acc_gcor=NA, 
                              p_acc_pear=NA, 
@@ -88,9 +88,9 @@ accuracy_table_five <- data.frame(fold="five folds",
                              h2 = NA)
 
 for (i in 1:ncol(Phenotyping_Poplar)){
-  for (j in 1:20){
+  for (j in 1:5){
     tryCatch({
-      selected = five_folds[[i]][[j]][!is.na(Phenotyping_Poplar[five_folds[[i]][[j]], 
+      selected = five_folds[[j]][!is.na(Phenotyping_Poplar[five_folds[[j]], 
                                                                 colnames(Phenotyping_Poplar)[i]])]
       
       Y = data.frame(ID=rownames(Genotyping_Poplar[selected, ]), 
@@ -111,12 +111,12 @@ for (i in 1:ncol(Phenotyping_Poplar)){
       # hist(gmodel$u)
       # dev.off()
       # 
-      accuracy_table_five$g_acc_pear[((i-1)*20 + j)] = cor(Y$obs, Y$pred)
+      accuracy_table_five$g_acc_pear[((i-1)*5 + j)] = cor(Y$obs, Y$pred)
       
       gmodel2 = mixed.solve(Phenotyping_Poplar[selected, colnames(Phenotyping_Poplar)[i]], K=K_test)
       h2 = gmodel2$Vu / var(Y$obs)
-      accuracy_table_five$g_acc_gcor[((i-1)*20 + j)] = cor(Y$obs, Y$pred) / sqrt(h2)
-      accuracy_table_five$h2[((i-1)*20 + j)] = h2
+      accuracy_table_five$g_acc_gcor[((i-1)*5 + j)] = cor(Y$obs, Y$pred) / sqrt(h2)
+      accuracy_table_five$h2[((i-1)*5 + j)] = h2
       
       Y2 = Y
       if (colnames(Phenotyping_Poplar)[i] %in% ORL_names){
@@ -129,8 +129,8 @@ for (i in 1:ncol(Phenotyping_Poplar)){
         Y2$pred = NIRS_NormDer_Wood_Poplar_SAV[selected, ] %*% pmodel$u
       }
       
-      accuracy_table_five$p_acc_pear[((i-1)*20 + j)] = cor(Y2$obs, Y2$pred)
-      accuracy_table_five$p_acc_gcor[((i-1)*20 + j)] = 
+      accuracy_table_five$p_acc_pear[((i-1)*5 + j)] = cor(Y2$obs, Y2$pred)
+      accuracy_table_five$p_acc_gcor[((i-1)*5 + j)] = 
         estimate_gcor(data=Y2, Knn=K_test, method="MCMCglmm", normalize=F)[1]
       
     }, error=function(e){cat(i, j, "\n", "Error:", conditionMessage(e), "\n")})
@@ -371,8 +371,9 @@ for (i in 1:length(traits)){
     theme(axis.title.x = element_blank(),
           axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
-          legend.position="none") +
-    ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
+          legend.position="none") 
+  # +
+  #   ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
   
   save_plot(paste("estimate_accuracy/plots/", traits[i], "_accuracy.pdf", sep=""), 
             plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))

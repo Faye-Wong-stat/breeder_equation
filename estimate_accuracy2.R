@@ -47,19 +47,17 @@ str(Phenotyping_Wheat)
 kinship <- A.mat(Genotyping_Wheat)
 
 set.seed(1) 
-eight_folds <- vector(mode="list", length=ncol(Phenotyping_Wheat))
-eight_folds <- lapply(eight_folds, FUN=function(x){
-  vector(mode="list", length=20)
-})
-for (i in 1:ncol(Phenotyping_Wheat)){
-  eight_folds[[i]] = lapply(eight_folds[[i]], FUN=function(x){
-    sample(1:dim(Genotyping_Wheat)[1], round(dim(Genotyping_Wheat)[1]/8))
-  })
-}
-
-
-# eight_folds <- sample(1:nrow(Genotyping_Wheat), nrow(Genotyping_Wheat))
-# eight_folds <- split(eight_folds, 1:5)
+# eight_folds <- vector(mode="list", length=ncol(Phenotyping_Wheat))
+# eight_folds <- lapply(eight_folds, FUN=function(x){
+#   vector(mode="list", length=20)
+# })
+# for (i in 1:ncol(Phenotyping_Wheat)){
+#   eight_folds[[i]] = lapply(eight_folds[[i]], FUN=function(x){
+#     sample(1:dim(Genotyping_Wheat)[1], round(dim(Genotyping_Wheat)[1]/8))
+#   })
+# }
+eight_folds <- sample(1:nrow(Genotyping_Wheat), nrow(Genotyping_Wheat))
+eight_folds <- split(eight_folds, 1:8)
 # four_folds <- sample(1:nrow(Genotyping_Wheat), nrow(Genotyping_Wheat))
 # four_folds <- split(four_folds, 1:4)
 # three_folds <- sample(1:nrow(Genotyping_Wheat), nrow(Genotyping_Wheat))
@@ -68,8 +66,8 @@ for (i in 1:ncol(Phenotyping_Wheat)){
 
 
 accuracy_table_eight <- data.frame(
-                                  trait=rep(colnames(Phenotyping_Wheat), each=20), 
-                                  jth_fold=rep(1:20, length(colnames(Phenotyping_Wheat))), 
+                                  trait=rep(colnames(Phenotyping_Wheat), each=8), 
+                                  jth_fold=rep(1:8, length(colnames(Phenotyping_Wheat))), 
                                   g_acc_pear=NA, 
                                   g_acc_gcor=NA, 
                                   p_acc_pear_grain=NA, 
@@ -78,9 +76,9 @@ accuracy_table_eight <- data.frame(
                                   p_acc_gcor_leaf=NA, 
                                   h2=NA)
 for (i in 1:ncol(Phenotyping_Wheat)){
-  for (j in 1:20){
+  for (j in 1:8){
     tryCatch({
-      selected = eight_folds[[i]][[j]][!is.na(Phenotyping_Wheat[eight_folds[[i]][[j]], i])]
+      selected = eight_folds[[j]][!is.na(Phenotyping_Wheat[eight_folds[[j]], i])]
       
       Y = data.frame(ID=rownames(Genotyping_Wheat[selected, ]), 
                      obs=Phenotyping_Wheat[selected, i])
@@ -96,41 +94,41 @@ for (i in 1:ncol(Phenotyping_Wheat)){
                            Genotyping_Wheat[-selected, ])
       Y$pred = Genotyping_Wheat[Y$ID, ] %*% gmodel$u
       
-      accuracy_table_eight$g_acc_pear[(i-1)*20 + j] = cor(Y$obs, Y$pred)
+      accuracy_table_eight$g_acc_pear[(i-1)*8 + j] = cor(Y$obs, Y$pred)
       
       gmodel2 = mixed.solve(Phenotyping_Wheat[selected, i], K=K_test)
       h2 = gmodel2$Vu / var(Y$obs)
-      accuracy_table_eight$g_acc_gcor[(i-1)*20 + j] = cor(Y$obs, Y$pred) / sqrt(h2)
-      accuracy_table_eight$h2[(i-1)*20 + j] = h2
+      accuracy_table_eight$g_acc_gcor[(i-1)*8 + j] = cor(Y$obs, Y$pred) / sqrt(h2)
+      accuracy_table_eight$h2[(i-1)*8 + j] = h2
       
       
       if (grepl("IRR", colnames(Phenotyping_Wheat)[i])){
         pmodel_grain = mixed.solve(Phenotyping_Wheat[-selected, i], 
                                    NIRS_NormDer_Grain_IRR_Wheat[-selected, ])
         Y$pred = NIRS_NormDer_Grain_IRR_Wheat[selected, ] %*% pmodel_grain$u
-        accuracy_table_eight$p_acc_pear_grain[(i-1)*20 + j] = cor(Y$obs, Y$pred)
-        accuracy_table_eight$p_acc_gcor_grain[(i-1)*20 + j] = 
+        accuracy_table_eight$p_acc_pear_grain[(i-1)*8 + j] = cor(Y$obs, Y$pred)
+        accuracy_table_eight$p_acc_gcor_grain[(i-1)*8 + j] = 
           estimate_gcor(data=Y, Knn=K_test, method="MCMCglmm", normalize=F)[1]
         
         pmodel_leaf = mixed.solve(Phenotyping_Wheat[-selected, i], 
                                   NIRS_NormDer_Leaf_IRR_Wheat[-selected, ])
         Y$pred = NIRS_NormDer_Leaf_IRR_Wheat[selected, ] %*% pmodel_leaf$u
-        accuracy_table_eight$p_acc_pear_leaf[(i-1)*20 + j] = cor(Y$obs, Y$pred)
-        accuracy_table_eight$p_acc_gcor_leaf[(i-1)*20 + j] = 
+        accuracy_table_eight$p_acc_pear_leaf[(i-1)*8 + j] = cor(Y$obs, Y$pred)
+        accuracy_table_eight$p_acc_gcor_leaf[(i-1)*8 + j] = 
           estimate_gcor(data=Y, Knn=K_test, method="MCMCglmm", normalize=F)[1]
       } else {
         pmodel_grain = mixed.solve(Phenotyping_Wheat[-selected, i], 
                                    NIRS_NormDer_Grain_DRY_Wheat[-selected, ])
         Y$pred = NIRS_NormDer_Grain_DRY_Wheat[selected, ] %*% pmodel_grain$u
-        accuracy_table_eight$p_acc_pear_grain[(i-1)*20 + j] = cor(Y$obs, Y$pred)
-        accuracy_table_eight$p_acc_gcor_grain[(i-1)*20 + j] = 
+        accuracy_table_eight$p_acc_pear_grain[(i-1)*8 + j] = cor(Y$obs, Y$pred)
+        accuracy_table_eight$p_acc_gcor_grain[(i-1)*8 + j] = 
           estimate_gcor(data=Y, Knn=K_test, method="MCMCglmm", normalize=F)[1]
         
         pmodel_leaf = mixed.solve(Phenotyping_Wheat[-selected, i], 
                                   NIRS_NormDer_Leaf_DRY_Wheat[-selected, ])
         Y$pred = NIRS_NormDer_Leaf_DRY_Wheat[selected, ] %*% pmodel_leaf$u
-        accuracy_table_eight$p_acc_pear_leaf[(i-1)*20 + j] = cor(Y$obs, Y$pred)
-        accuracy_table_eight$p_acc_gcor_leaf[(i-1)*20 + j] = 
+        accuracy_table_eight$p_acc_pear_leaf[(i-1)*8 + j] = cor(Y$obs, Y$pred)
+        accuracy_table_eight$p_acc_gcor_leaf[(i-1)*8 + j] = 
           estimate_gcor(data=Y, Knn=K_test, method="MCMCglmm", normalize=F)[1]
       }
       
@@ -414,49 +412,50 @@ for (i in 1:length(traits)){
     theme(axis.title.x = element_blank(),
           axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
-          legend.position="none") +
-    ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
+          legend.position="none") 
+  # +
+  #   ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
   
   save_plot(paste("estimate_accuracy2/plots/", traits[i], "_accuracy.pdf", sep=""), 
             plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
 }
-
-pdf(paste("estimate_accuracy2/plots/", "accuracy.pdf", sep=""), width=14, height=6)
-for (i in 1:length(traits)){
-  print(
-    ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i] , ],
-           aes(x=`prediction method`, y=accuracy, fill=`prediction method`)) +
-      geom_boxplot() +
-      facet_wrap(~adjustment) +
-      ylim(0, 1) + 
-      ylab("predictive ability/prediction accuracy") + 
-      theme_minimal_grid(font_size=12) +
-      theme(axis.title.x = element_blank(),
-            axis.text.x = element_blank(),
-            axis.ticks.x = element_blank(),
-            legend.position="bottom") +
-      ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
-  )
-  
-  # print(ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i], ], 
-  #              aes(x=type, y=accuracy, fill=type)) + 
-  #         geom_boxplot() + 
-  #         facet_wrap(~fold) + 
-  #         scale_fill_hue(labels=c("g_acc_pear"="genomic accuracy Pearson", 
-  #                                 "g_acc_gcor"="genomic accuracy adjusted", 
-  #                                 "p_acc_pear_grain"="phenomic accuracy Pearson, Grain NIRS", 
-  #                                 "p_acc_pear_leaf"="phenomic accuracy Pearson, Leaf NIRS", 
-  #                                 "p_acc_gcor_grain"="phenomic accuracy adjusted, Grain NIRS", 
-  #                                 "p_acc_gcor_leaf"="phenomic accuracy adjusted, Leaf NIRS")) + 
-  #         theme_minimal_grid(font_size=10) + 
-  #         theme(axis.title.x = element_blank(),
-  #               axis.text.x = element_blank(),
-  #               axis.ticks.x = element_blank(), 
-  #               legend.position="bottom") + 
-  #         ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
-  # )
-}
-dev.off()
+# 
+# pdf(paste("estimate_accuracy2/plots/", "accuracy.pdf", sep=""), width=14, height=6)
+# for (i in 1:length(traits)){
+#   print(
+#     ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i] , ],
+#            aes(x=`prediction method`, y=accuracy, fill=`prediction method`)) +
+#       geom_boxplot() +
+#       facet_wrap(~adjustment) +
+#       ylim(0, 1) + 
+#       ylab("predictive ability/prediction accuracy") + 
+#       theme_minimal_grid(font_size=12) +
+#       theme(axis.title.x = element_blank(),
+#             axis.text.x = element_blank(),
+#             axis.ticks.x = element_blank(),
+#             legend.position="bottom") +
+#       ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
+#   )
+#   
+#   # print(ggplot(accuracy_table_long[accuracy_table_long$trait == traits[i], ], 
+#   #              aes(x=type, y=accuracy, fill=type)) + 
+#   #         geom_boxplot() + 
+#   #         facet_wrap(~fold) + 
+#   #         scale_fill_hue(labels=c("g_acc_pear"="genomic accuracy Pearson", 
+#   #                                 "g_acc_gcor"="genomic accuracy adjusted", 
+#   #                                 "p_acc_pear_grain"="phenomic accuracy Pearson, Grain NIRS", 
+#   #                                 "p_acc_pear_leaf"="phenomic accuracy Pearson, Leaf NIRS", 
+#   #                                 "p_acc_gcor_grain"="phenomic accuracy adjusted, Grain NIRS", 
+#   #                                 "p_acc_gcor_leaf"="phenomic accuracy adjusted, Leaf NIRS")) + 
+#   #         theme_minimal_grid(font_size=10) + 
+#   #         theme(axis.title.x = element_blank(),
+#   #               axis.text.x = element_blank(),
+#   #               axis.ticks.x = element_blank(), 
+#   #               legend.position="bottom") + 
+#   #         ggtitle(paste("trait: ", traits[i], ", h2: ", h2[i], sep=""))
+#   # )
+# }
+# dev.off()
 
 
 
