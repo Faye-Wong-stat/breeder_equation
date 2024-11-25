@@ -11,7 +11,7 @@ library(cowplot)
 data_path <- "data/hyperspectral_reflectance_derived_relationship_matrices/"
 
 
-data_DTHD <- read.csv(paste(data_path, "Krause_et_al_Yield_BLUPs_DTHD.csv", sep=""), row.names = 1, 
+data_DTHD <- read.csv(paste(data_path, "Krause_et_al_2018_Yield_iid_BLUPs_DTHD.csv", sep=""), 
                       check.names = F)
 
 
@@ -29,6 +29,13 @@ pheno_stages <- read.csv(paste(data_path, "Krause_et_al_2018_Hyper_BLUEs_Growth_
                                sep=""), check.names = F)
 dim(pheno_stages)
 # [1] 65271    66
+pheno_stages[1:5, 1:5]
+#       GID Breeding_Cycle Managed_Treatment Growth_Stage Hyper_BLUE_398nm
+# 1 6569128        2013-14  Moderate Drought          VEG         91.93150
+# 2 6569128        2013-14  Moderate Drought         HEAD         70.02356
+# 3 6569128        2013-14  Moderate Drought           GF         61.04231
+# 4 6569128        2013-14  Moderate Drought          ALL         76.76667
+# 5 6569128        2013-14       Optimal Bed          VEG         84.88888
 
 phenomic <- pheno_stages[pheno_stages$Growth_Stage=="ALL", ]
 dim(phenomic)
@@ -42,6 +49,19 @@ phenomic$site_year <- paste(phenomic$Breeding_Cycle, phenomic$Managed_Treatment,
 phenomic <- phenomic[, c(1, 67, 5:66)]
 dim(phenomic)
 # [1] 17822    64
+phenomic[1:5, 1:5]
+#        GID                site_year Hyper_BLUE_398nm Hyper_BLUE_405nm
+# 4  6569128 2013-14_Moderate Drought         76.76667        104.09324
+# 8  6569128      2013-14_Optimal Bed         63.84228         85.44301
+# 11 6569128             2013-14_Heat         93.74714        120.91550
+# 15 6569128   2013-14_Severe Drought         68.40447         98.56469
+# 19 6569128     2013-14_Optimal Flat         65.08903         85.74871
+#    Hyper_BLUE_412nm
+# 4          121.3816
+# 8          106.0869
+# 11         150.8088
+# 15         110.9700
+# 19          93.1260
 length(unique(interaction(phenomic$GID, phenomic$site_year)))
 # [1] 17822
 phenomic[, 3:64] <- scale(phenomic[, 3:64])
@@ -59,6 +79,11 @@ phenotypes <- read.csv(paste(data_path, "Krause_et_al_2018_Yield_BLUEs.csv", sep
 dim(phenotypes)
 # [1] 18855     4
 str(phenotypes)
+# 'data.frame':   18855 obs. of  4 variables:
+# $ GID              : int  6569128 6569128 6569128 6569128 6569128 6688880 6688880 6688880 6688880 6688880 ...
+# $ Breeding Cycle   : chr  "2013-14" "2013-14" "2013-14" "2013-14" ...
+# $ Managed_Treatment: chr  "Moderate Drought" "Optimal Bed" "Heat" "Severe Drought" ...
+# $ Grain_Yield_BLUE : num  3.43 6.07 1.54 2.02 6.12 ...
 phenotypes$GID <- as.character(phenotypes$GID)
 length(unique(phenotypes$GID))
 # [1] 3771
@@ -175,6 +200,90 @@ accuracy_table <- readRDS("estimate_accuracy4/accuracy_table.rds")
 
 
 
+accuracy_table_long <- data.frame(site_year = accuracy_table[rep(1:nrow(accuracy_table), each=4), 1], 
+                                  type = rep(colnames(accuracy_table)[2:5], nrow(accuracy_table)))
+accuracy_table_long$accuracy <- NA
+for (i in 1:nrow(accuracy_table)){
+  accuracy_table_long$accuracy[((i-1)*4+1) : ((i-1)*4+4)] = 
+    accuracy_table[i, 2:5]
+}
+accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
 
+accuracy_table_long$h2 <- rep(accuracy_table$h2, each=4)
+accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
+accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear", 
+                                                                      "g_acc_gcor", "p_acc_gcor"))
+accuracy_table_long$adjustment <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "p_acc_pear"), 
+                                         "before correction", "after correction")
+accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment, 
+                                         levels=c("before correction", "after correction"))
+accuracy_table_long$`prediction method` <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
+                                                  "genomic", "phenomic")
+
+saveRDS(accuracy_table_long, "estimate_accuracy4/accuracy_table_long.rds")
+accuracy_table_long <- readRDS("estimate_accurac4/accuracy_table_long.rds")
+
+
+
+h2 <- mean(accuracy_table$h2)
+
+p1 <- ggplot(accuracy_table_long[accuracy_table_long$adjustment == "before correction", ], 
+             aes(x=`prediction method`, y=accuracy, fill=`prediction method`)) + 
+  geom_boxplot() +
+  facet_wrap(~adjustment) +
+  ylim(-0.6, 1) +
+  ylab("predictive ability") + 
+  theme_minimal_grid(font_size=12) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position="bottom") + 
+  ggtitle(paste("h2: ", h2, sep=""))
+p2 <- ggplot(accuracy_table_long[accuracy_table_long$adjustment == "after correction", ],
+                  aes(x=`prediction method`, y=accuracy, fill=`prediction method`)) +
+  geom_boxplot() +
+  facet_wrap(~adjustment) +
+  ylim(-0.6, 1) +
+  ylab("prediction accuracy") + 
+  theme_minimal_grid(font_size=12) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position="none") 
+
+save_plot(paste("estimate_accuracy4/plots/", "accuracy.pdf", sep=""), 
+          plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
+
+for (i in 1:19){
+  p1 = ggplot(accuracy_table_long[accuracy_table_long$site_year == site_year[i] & 
+                                    accuracy_table_long$adjustment == "before correction", ],
+              aes(x=`prediction method`, y=accuracy, fill=`prediction method`)) +
+    geom_boxplot() +
+    facet_wrap(~adjustment) +
+    ylim(0, 1) + 
+    ylab("predictive ability") + 
+    theme_minimal_grid(font_size=12) +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          legend.position="bottom") + 
+    ggtitle(paste("treatment: ", site_year[i], ", h2: ", h2[i], sep=""))
+  
+  p2 = ggplot(accuracy_table_long[accuracy_table_long$trait == site_year[i] & 
+                                    accuracy_table_long$adjustment == "after correction", ],
+              aes(x=`prediction method`, y=accuracy, fill=`prediction method`)) +
+    geom_boxplot() +
+    facet_wrap(~adjustment) +
+    ylim(0, 1) + 
+    ylab("prediction accuracy") + 
+    theme_minimal_grid(font_size=12) +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          legend.position="none") 
+  
+  save_plot(paste("estimate_accuracy4/plots/", site_year[i], "_accuracy.pdf", sep=""), 
+            plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
+}
 
 
