@@ -350,32 +350,35 @@ accuracy_table <- accuracy_table_eight
 accuracy_table_long <- accuracy_table[rep(1:nrow(accuracy_table), each=6), 1:2]
 accuracy_table_long$type <- rep(colnames(accuracy_table)[3:8], nrow(accuracy_table))
 accuracy_table_long$accuracy <- NA
+accuracy_table_long$h2 <- NA
 for (i in 1:nrow(accuracy_table)){
   accuracy_table_long$accuracy[((i-1)*6+1) : ((i-1)*6+6)] = 
     accuracy_table[i, 3:8]
+  accuracy_table_long$h2[((i-1)*6+1) : ((i-1)*6+6)] = 
+    accuracy_table[i, 9]
 }
 accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
-h2_table <- aggregate(accuracy_table$h2, list(accuracy_table$trait), mean)
-rownames(h2_table) <- h2_table$Group.1
-accuracy_table_long$h2 <- h2_table[accuracy_table_long$trait, "x"]
-accuracy_table_long <- na.omit(accuracy_table_long)
-accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
+# h2_table <- aggregate(accuracy_table$h2, list(accuracy_table$trait), mean)
+# rownames(h2_table) <- h2_table$Group.1
+# accuracy_table_long$h2 <- h2_table[accuracy_table_long$trait, "x"]
+# accuracy_table_long <- na.omit(accuracy_table_long)
+# accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
 accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear_grain", 
                                                                       "p_acc_pear_leaf", "g_acc_gcor", 
                                                                       "p_acc_gcor_grain", "p_acc_gcor_leaf"))
 accuracy_table_long$adjustment <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "p_acc_pear_grain", 
                                                                          "p_acc_pear_leaf"), 
-                                         "before correction", "after correction")
+                                         "predictive ability", "prediction accuracy")
 accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment, 
-                                         levels=c("before correction", "after correction"))
+                                         levels=c("predictive ability", "prediction accuracy"))
 accuracy_table_long$`prediction method` <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
                                          "genomic", ifelse(accuracy_table_long$type %in% 
                                                              c("p_acc_pear_grain", "p_acc_gcor_grain"), 
-                                                           "grain-phenomic", "leaf-phenomic"))
+                                                           "phenomic-grain", "phenomic-leaf"))
 accuracy_table_long$`prediction method` <- factor(accuracy_table_long$`prediction method`, 
-                                         levels = c("genomic", "grain-phenomic", "leaf-phenomic"))
-accuracy_table_long$trait2 <- ifelse(accuracy_table_long$trait %in% c("IRR_GrainYield", "DRY_GrainYield"), 
-                                     "GrainYield", "HeadingDate")
+                                         levels = c("genomic", "phenomic-grain", "phenomic-leaf"))
+# accuracy_table_long$trait2 <- ifelse(accuracy_table_long$trait %in% c("IRR_GrainYield", "DRY_GrainYield"), 
+#                                      "GrainYield", "HeadingDate")
 
 saveRDS(accuracy_table_long, "estimate_accuracy2/accuracy_table_long.rds")
 accuracy_table_long <- readRDS("estimate_accuracy2/accuracy_table_long.rds")

@@ -203,20 +203,23 @@ accuracy_table <- readRDS("estimate_accuracy4/accuracy_table.rds")
 accuracy_table_long <- data.frame(site_year = accuracy_table[rep(1:nrow(accuracy_table), each=4), 1], 
                                   type = rep(colnames(accuracy_table)[2:5], nrow(accuracy_table)))
 accuracy_table_long$accuracy <- NA
+accuracy_table_long$h2 <- NA
 for (i in 1:nrow(accuracy_table)){
   accuracy_table_long$accuracy[((i-1)*4+1) : ((i-1)*4+4)] = 
     accuracy_table[i, 2:5]
+  accuracy_table_long$h2[((i-1)*4+1) : ((i-1)*4+4)] = 
+    accuracy_table[i, 6]
 }
 accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
 
-accuracy_table_long$h2 <- rep(accuracy_table$h2, each=4)
-accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
+# accuracy_table_long$h2 <- rep(accuracy_table$h2, each=4)
+# accuracy_table_long$h2 <- as.character(round(accuracy_table_long$h2, 5))
 accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear", 
                                                                       "g_acc_gcor", "p_acc_gcor"))
 accuracy_table_long$adjustment <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "p_acc_pear"), 
-                                         "before correction", "after correction")
+                                         "predictive ability", "prediction accuracy")
 accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment, 
-                                         levels=c("before correction", "after correction"))
+                                         levels=c("predictive ability", "prediction accuracy"))
 accuracy_table_long$`prediction method` <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
                                                   "genomic", "phenomic")
 

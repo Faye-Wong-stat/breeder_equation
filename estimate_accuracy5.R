@@ -205,6 +205,7 @@ for (j in 1:5){
 # }
 
 saveRDS(accuracy_table_five, "estimate_accuracy5/accuracy_table_five.rds")
+accuracy_table_five <- readRDS("estimate_accuracy5/accuracy_table_five.rds")
 
 
 
@@ -214,27 +215,30 @@ accuracy_table <- accuracy_table_five
 accuracy_table_long <- data.frame(jth_fold=accuracy_table[rep(1:nrow(accuracy_table), each=6), 2], 
                                   type=rep(colnames(accuracy_table)[3:8], nrow(accuracy_table)))
 accuracy_table_long$accuracy <- NA
+accuracy_table_long$h2 <- NA
 for (i in 1:nrow(accuracy_table)){
   accuracy_table_long$accuracy[((i-1)*6+1) : ((i-1)*6+6)] = 
     accuracy_table[i, 3:8]
+  accuracy_table_long$h2[((i-1)*6+1) : ((i-1)*6+6)] = 
+    accuracy_table[i, 9]
 }
 accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
 # accuracy_table_long <- na.omit(accuracy_table_long)
-accuracy_table_long$h2 <- mean(accuracy_table$h2)
+# accuracy_table_long$h2 <- mean(accuracy_table$h2)
 accuracy_table_long$type <- factor(accuracy_table_long$type, levels=c("g_acc_pear", "p_acc_pear_mix", 
                                                                       "p_acc_pear_fix", "g_acc_gcor", 
                                                                       "p_acc_gcor_mix", "p_acc_gcor_fix"))
 accuracy_table_long$adjustment <- ifelse(accuracy_table_long$type %in% 
                                            c("g_acc_pear", "p_acc_pear_mix", "p_acc_pear_fix"), 
-                                         "before correction", "after correction")
+                                         "predictive ability", "prediction accuracy")
 accuracy_table_long$adjustment <- factor(accuracy_table_long$adjustment, 
-                                         levels=c("before correction", "after correction"))
+                                         levels=c("predictive ability", "prediction accuracy"))
 accuracy_table_long$`prediction method` <- ifelse(accuracy_table_long$type %in% c("g_acc_pear", "g_acc_gcor"), 
                                          "genomic", ifelse(accuracy_table_long$type %in% 
                                                              c("p_acc_pear_mix", "p_acc_gcor_mix"), 
-                                                           "mixed phenomic", "fixed phenomic"))
+                                                           "phenomic-mixed", "phenomic-fixed"))
 accuracy_table_long$`prediction method` <- factor(accuracy_table_long$`prediction method`, 
-                                                  levels=c("genomic", "mixed phenomic", "fixed phenomic"))
+                                                  levels=c("genomic", "phenomic-mixed", "phenomic-fixed"))
 
 saveRDS(accuracy_table_long, "estimate_accuracy5/accuracy_table_long.rds") 
 
@@ -265,7 +269,7 @@ p2 = ggplot(accuracy_table_long[accuracy_table_long$adjustment == "after correct
 # +
   # ggtitle(paste("trait: grain yield", ", h2: ", h2[i], sep=""))
 
-save_plot(paste("estimate_accuracy5/plots/", "accuracy.pdf", sep=""), 
+save_plot(paste("estimate_accuracy5/plots/", "accuracy_fixed.pdf", sep=""), 
           plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
 
 pdf(paste("estimate_accuracy5/plots/", "accuracy.pdf", sep=""), width=14)
