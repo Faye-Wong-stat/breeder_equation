@@ -245,44 +245,182 @@ accuracy_wide$Trait <- c("Orl_Height", "Orl_Height",
 
 saveRDS(accuracy_wide, "plot/accuracy_wide.rds")
 accuracy_wide <- readRDS("plot/accuracy_wide.rds")
+write.csv(accuracy_wide, "plot/accuracy_wide.csv", row.names = F, quote = F)
 
 accuracy_wide
        Case_Study             Trait     Prediction            r          r_y             h2
-1  poplar_Rincent        Orl_Height        genomic  0.565(0.03) 0.684(0.032)  0.687(0.043)
-2  poplar_Rincent        Orl_Height       phenomic  0.656(0.01) 0.714(0.077)  0.687(0.043)
-3  poplar_Rincent      Orl_BudFlush        genomic 0.722(0.019) 0.801(0.026)  0.813(0.012)
-4  poplar_Rincent      Orl_BudFlush       phenomic 0.095(0.055) 0.017(0.021)  0.813(0.012)
-5  poplar_Rincent      Sav_BudFlush        genomic  0.729(0.02) 0.848(0.041)  0.748(0.043)
-6  poplar_Rincent      Sav_BudFlush       phenomic 0.333(0.039) 0.201(0.028)  0.748(0.043)
-7  poplar_Rincent        Orl_BudSet        genomic 0.751(0.031)   0.86(0.05)  0.745(0.049)
-8  poplar_Rincent        Orl_BudSet       phenomic  0.545(0.02)  0.55(0.028)  0.745(0.049)
-9  poplar_Rincent        Sav_BudSet        genomic  0.608(0.04) 0.669(0.043)   0.828(0.03)
-10 poplar_Rincent        Sav_BudSet       phenomic 0.337(0.017) 0.352(0.016)   0.828(0.03)
-11 poplar_Rincent Orl_Circumference        genomic  0.61(0.018) 0.722(0.039) 0.726(0.048)
-12 poplar_Rincent Orl_Circumference       phenomic 0.718(0.022) 0.754(0.021) 0.726(0.048)
-13 poplar_Rincent Sav_Circumference        genomic 0.777(0.017) 0.987(0.013) 0.542(0.024)
-14 poplar_Rincent Sav_Circumference       phenomic 0.809(0.014) 0.736(0.024) 0.542(0.024)
-15 poplar_Rincent          Orl_Rust        genomic 0.622(0.015) 0.681(0.024) 0.838(0.035)
-16 poplar_Rincent          Orl_Rust       phenomic 0.443(0.046) 0.452(0.044) 0.838(0.035)
-17  wheat_Rincent    Dry_GrainYield        genomic 0.238(0.067) 0.407(0.121) 0.616(0.128)
-18  wheat_Rincent    Dry_GrainYield phenomic-grain 0.543(0.047) 0.641(0.084) 0.616(0.128)
-19  wheat_Rincent    Dry_GrainYield  phenomic-leaf 0.314(0.066) 0.334(0.077) 0.616(0.128)
-20  wheat_Rincent   Dry_HeadingDate        genomic 0.487(0.041) 0.657(0.066) 0.616(0.135)
-21  wheat_Rincent   Dry_HeadingDate phenomic-grain 0.806(0.033) 0.855(0.013) 0.616(0.135)
-22  wheat_Rincent   Dry_HeadingDate  phenomic-leaf  0.848(0.02) 0.893(0.017) 0.616(0.135)
-23  wheat_Rincent    Irr_GrainYield        genomic   0.4(0.059) 0.668(0.088)  0.58(0.159)
-24  wheat_Rincent    Irr_GrainYield phenomic-grain 0.527(0.053)  0.65(0.071)  0.58(0.159)
-25  wheat_Rincent    Irr_GrainYield  phenomic-leaf 0.276(0.083) 0.229(0.089)  0.58(0.159)
-26  wheat_Rincent   Irr_HeadingDate        genomic 0.511(0.033) 0.662(0.056) 0.682(0.096)
-27  wheat_Rincent   Irr_HeadingDate phenomic-grain 0.618(0.027)  0.74(0.035) 0.682(0.096)
-28  wheat_Rincent   Irr_HeadingDate  phenomic-leaf   0.8(0.023) 0.862(0.027) 0.682(0.096)
-29           Winn        GrainYield        genomic  0.307(0.01) 0.711(0.032) 0.189(0.014)
-30           Winn        GrainYield phenomic-fixed 0.472(0.014) 0.757(0.192) 0.189(0.014)
-31           Winn        GrainYield phenomic-mixed  0.47(0.015)  0.545(0.21) 0.189(0.014)
-32         Krause        GrainYield        genomic 0.283(0.028) 0.619(0.052)  0.201(0.02)
-33         Krause        GrainYield       phenomic  0.15(0.051) 0.166(0.056)  0.201(0.02)
+  poplar_Rincent        Orl_Height        genomic  0.565(0.03) 0.684(0.032)  0.687(0.043)
+  poplar_Rincent        Orl_Height       phenomic  0.656(0.01) 0.714(0.077)  0.687(0.043)
+  poplar_Rincent      Orl_BudFlush        genomic 0.722(0.019) 0.801(0.026)  0.813(0.012)
+  poplar_Rincent      Orl_BudFlush       phenomic 0.095(0.055) 0.017(0.021)  0.813(0.012)
+  poplar_Rincent      Sav_BudFlush        genomic  0.729(0.02) 0.848(0.041)  0.748(0.043)
+  poplar_Rincent      Sav_BudFlush       phenomic 0.333(0.039) 0.201(0.028)  0.748(0.043)
+  poplar_Rincent        Orl_BudSet        genomic 0.751(0.031)   0.86(0.05)  0.745(0.049)
+  poplar_Rincent        Orl_BudSet       phenomic  0.545(0.02)  0.55(0.028)  0.745(0.049)
+  poplar_Rincent        Sav_BudSet        genomic  0.608(0.04) 0.669(0.043)   0.828(0.03)
+ poplar_Rincent        Sav_BudSet       phenomic 0.337(0.017) 0.352(0.016)   0.828(0.03)
+ poplar_Rincent Orl_Circumference        genomic  0.61(0.018) 0.722(0.039) 0.726(0.048)
+ poplar_Rincent Orl_Circumference       phenomic 0.718(0.022) 0.754(0.021) 0.726(0.048)
+ poplar_Rincent Sav_Circumference        genomic 0.777(0.017) 0.987(0.013) 0.542(0.024)
+ poplar_Rincent Sav_Circumference       phenomic 0.809(0.014) 0.736(0.024) 0.542(0.024)
+ poplar_Rincent          Orl_Rust        genomic 0.622(0.015) 0.681(0.024) 0.838(0.035)
+ poplar_Rincent          Orl_Rust       phenomic 0.443(0.046) 0.452(0.044) 0.838(0.035)
+  wheat_Rincent    Dry_GrainYield        genomic 0.238(0.067) 0.407(0.121) 0.616(0.128)
+  wheat_Rincent    Dry_GrainYield phenomic-grain 0.543(0.047) 0.641(0.084) 0.616(0.128)
+  wheat_Rincent    Dry_GrainYield  phenomic-leaf 0.314(0.066) 0.334(0.077) 0.616(0.128)
+  wheat_Rincent   Dry_HeadingDate        genomic 0.487(0.041) 0.657(0.066) 0.616(0.135)
+  wheat_Rincent   Dry_HeadingDate phenomic-grain 0.806(0.033) 0.855(0.013) 0.616(0.135)
+  wheat_Rincent   Dry_HeadingDate  phenomic-leaf  0.848(0.02) 0.893(0.017) 0.616(0.135)
+  wheat_Rincent    Irr_GrainYield        genomic   0.4(0.059) 0.668(0.088)  0.58(0.159)
+  wheat_Rincent    Irr_GrainYield phenomic-grain 0.527(0.053)  0.65(0.071)  0.58(0.159)
+  wheat_Rincent    Irr_GrainYield  phenomic-leaf 0.276(0.083) 0.229(0.089)  0.58(0.159)
+  wheat_Rincent   Irr_HeadingDate        genomic 0.511(0.033) 0.662(0.056) 0.682(0.096)
+  wheat_Rincent   Irr_HeadingDate phenomic-grain 0.618(0.027)  0.74(0.035) 0.682(0.096)
+  wheat_Rincent   Irr_HeadingDate  phenomic-leaf   0.8(0.023) 0.862(0.027) 0.682(0.096)
+           Winn        GrainYield        genomic  0.307(0.01) 0.711(0.032) 0.189(0.014)
+           Winn        GrainYield phenomic-fixed 0.472(0.014) 0.757(0.192) 0.189(0.014)
+           Winn        GrainYield phenomic-mixed  0.47(0.015)  0.545(0.21) 0.189(0.014)
+         Krause        GrainYield        genomic 0.283(0.028) 0.619(0.052)  0.201(0.02)
+         Krause        GrainYield       phenomic  0.15(0.051) 0.166(0.056)  0.201(0.02)
 
 
+
+
+
+p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+                           accuracy_sum$adjustment == "predictive ability", ], 
+            aes(x=prediction_method)) +
+  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+                    colour=prediction_method), width=0.1) + 
+  # facet_wrap(~adjustment) +
+  ylim(0, 1) + 
+  ylab("accuracy") + 
+  scale_colour_manual(values=c("blue", "gold3")) + 
+  theme_minimal_grid(font_size=7) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.6),
+    #     axis.ticks.x = element_blank(),
+        legend.position="none") + 
+  ggtitle(paste("Case 1: poplar circumference"))
+
+# p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+#                            accuracy_sum$adjustment == "prediction accuracy", ],
+#             aes(x=prediction_method)) +
+#   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+#   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+#                     colour=prediction_method), width=0.1) + 
+#   facet_wrap(~adjustment) +
+#   ylim(0, 1) + 
+#   ylab("r") + 
+#   scale_colour_manual(values=c("blue", "gold3")) + 
+#   theme_minimal_grid(font_size=7) +
+#   theme(axis.title.x = element_blank(),
+#         axis.text.x = element_text(angle = 60, vjust = 0.6),
+#     #     axis.ticks.x = element_blank(),
+#         legend.position="none") 
+
+p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+                           accuracy_sum$adjustment == "predictive ability", ], 
+            aes(x=prediction_method)) +
+  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+                    colour=prediction_method), width=0.1) + 
+  # facet_wrap(~adjustment) +
+  ylim(0, 1) + 
+  # ylab("accuracy") + 
+  scale_colour_manual(values=c("blue", "gold3", "red")) + 
+  theme_minimal_grid(font_size=7) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.6),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        #     axis.ticks.x = element_blank(),
+        legend.position="none") + 
+  ggtitle(paste("Case 2: wheat grain yield"))
+
+save_plot(paste("plot/", "p1_p3.pdf", sep=""),
+          plot_grid(p1, p3, nrow=1, align = "vh", axis="btlr", labels=c("a", "b")))
+
+
+
+
+p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+                           accuracy_sum$adjustment == "predictive ability", ], 
+            aes(x=prediction_method)) +
+  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+                    colour=prediction_method), width=0.1) + 
+  facet_wrap(~adjustment) +
+  ylim(0, 1) + 
+  ylab("accuracy") + 
+  scale_colour_manual(values=c("blue", "gold3")) + 
+  theme_minimal_grid(font_size=9) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.6),
+        #     axis.ticks.x = element_blank(),
+        legend.position="none") + 
+  ggtitle(paste("Case 1: poplar circumference"))
+
+p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+                           accuracy_sum$adjustment == "prediction accuracy", ],
+            aes(x=prediction_method)) +
+  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+                    colour=prediction_method), width=0.1) + 
+  facet_wrap(~adjustment) +
+  ylim(0, 1) + 
+  ylab("predictive ability") + 
+  scale_colour_manual(values=c("blue", "gold3")) + 
+  theme_minimal_grid(font_size=9) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.6),
+        #     axis.ticks.x = element_blank(),
+        legend.position="none") 
+
+# save_plot(paste("plot/", "accuracy.pdf", sep=""), 
+#           plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
+
+p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+                           accuracy_sum$adjustment == "predictive ability", ], 
+            aes(x=prediction_method)) +
+  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+                    colour=prediction_method), width=0.1) + 
+  facet_wrap(~adjustment) +
+  ylim(0, 1) + 
+  ylab("accuracy") + 
+  scale_colour_manual(values=c("blue", "gold3", "red")) + 
+  theme_minimal_grid(font_size=9) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.6),
+        #     axis.ticks.x = element_blank(),
+        legend.position="none") + 
+  ggtitle(paste("Case 2: wheat grain yield"))
+
+p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+                           accuracy_sum$adjustment == "prediction accuracy", ],
+            aes(x=prediction_method)) +
+  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+                    colour=prediction_method), width=0.1) + 
+  facet_wrap(~adjustment) +
+  ylim(0, 1) + 
+  ylab("predictive ability") + 
+  scale_colour_manual(values=c("blue", "gold3", "red")) + 
+  theme_minimal_grid(font_size=9) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 60, vjust = 0.6),
+        #     axis.ticks.x = element_blank(),
+        legend.position="none") 
+
+# save_plot(paste("plot/","accuracy.pdf", sep=""), 
+#           plot_grid(p3, p4, nrow=1, align = "vh", axis="btlr"))
+
+save_plot(paste("plot/","p1_p2_p3_p4.pdf", sep=""), 
+          plot_grid(plot_grid(p1, p2, p3, p4, nrow=1, align = "vh", axis="btlr", 
+                              labels=c("a", NA, "b", NA))), 
+          base_asp = 3.236)
 
 
 
