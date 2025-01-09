@@ -353,7 +353,7 @@ p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
                     colour=prediction_method), width=0.1) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
-  ylab("accuracy") + 
+  ylab(expression("r"["y"])) + 
   scale_colour_manual(values=c("blue", "gold3")) + 
   theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
@@ -370,7 +370,7 @@ p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
                     colour=prediction_method), width=0.1) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
-  ylab("predictive ability") + 
+  ylab("r") + 
   scale_colour_manual(values=c("blue", "gold3")) + 
   theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
@@ -389,7 +389,7 @@ p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
                     colour=prediction_method), width=0.1) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
-  ylab("accuracy") + 
+  ylab(expression("r"["y"])) + 
   scale_colour_manual(values=c("blue", "gold3", "red")) + 
   theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
@@ -406,7 +406,7 @@ p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
                     colour=prediction_method), width=0.1) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
-  ylab("predictive ability") + 
+  ylab("r") + 
   scale_colour_manual(values=c("blue", "gold3", "red")) + 
   theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
