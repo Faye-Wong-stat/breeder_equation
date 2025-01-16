@@ -297,7 +297,7 @@ p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
   ylim(0, 1) + 
   ylab("accuracy") + 
   scale_colour_manual(values=c("blue", "gold3")) + 
-  theme_minimal_grid(font_size=7) +
+  theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 60, vjust = 0.6),
     #     axis.ticks.x = element_blank(),
@@ -321,7 +321,8 @@ p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
 #         legend.position="none") 
 
 p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
-                           accuracy_sum$adjustment == "predictive ability", ], 
+                           accuracy_sum$adjustment == "predictive ability" &
+                           accuracy_sum$prediction_method != "phenomic-leaf", ], 
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
@@ -329,8 +330,9 @@ p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
   # facet_wrap(~adjustment) +
   ylim(0, 1) + 
   # ylab("accuracy") + 
-  scale_colour_manual(values=c("blue", "gold3", "red")) + 
-  theme_minimal_grid(font_size=7) +
+  scale_x_discrete(labels= c("genomic", "phenomic")) + 
+  scale_colour_manual(values=c("blue", "gold3")) + 
+  theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 60, vjust = 0.6),
         axis.title.y = element_blank(),
@@ -382,7 +384,8 @@ p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
 #           plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
 
 p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
-                           accuracy_sum$adjustment == "predictive ability", ], 
+                           accuracy_sum$adjustment == "predictive ability" &
+                           accuracy_sum$prediction_method != "phenomic-leaf", ], 
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
@@ -390,7 +393,8 @@ p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab(expression("r"["y"])) + 
-  scale_colour_manual(values=c("blue", "gold3", "red")) + 
+  scale_x_discrete(labels= c("genomic", "phenomic")) + 
+  scale_colour_manual(values=c("blue", "gold3")) + 
   theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 60, vjust = 0.6),
@@ -399,7 +403,8 @@ p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
   ggtitle(paste("Case 2: wheat grain yield"))
 
 p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
-                           accuracy_sum$adjustment == "prediction accuracy", ],
+                           accuracy_sum$adjustment == "prediction accuracy" &
+                           accuracy_sum$prediction_method != "phenomic-leaf", ],
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
@@ -407,7 +412,8 @@ p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab("r") + 
-  scale_colour_manual(values=c("blue", "gold3", "red")) + 
+  scale_x_discrete(labels= c("genomic", "phenomic")) + 
+  scale_colour_manual(values=c("blue", "gold3")) + 
   theme_minimal_grid(font_size=9) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 60, vjust = 0.6),
