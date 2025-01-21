@@ -143,7 +143,8 @@ site_year <- unique(phenotypes$site_year)
 # for (i in 1:19){
 #   No_geno[i] = length(unique(phenotypes[phenotypes$site_year == site_year[i], "GID"]))
 # }
-accuracy_table <- data.frame(site_year = site_year, 
+accuracy_table <- data.frame(site_year = rep(site_year, each=5),
+                             jth_fold = rep(1:5, length(site_year)), 
                              g_acc_pear=NA, 
                              g_acc_gcor=NA, 
                              p_acc_pear=NA, 
@@ -152,47 +153,61 @@ accuracy_table <- data.frame(site_year = site_year,
 
 set.seed(1)
 for (i in 1:19){
-  tryCatch({
-    testing_data = phenotypes[phenotypes$site_year == site_year[i], ]
-  training_data = phenotypes[phenotypes$site_year != site_year[i], ]
+  five_folds = sample(rownames(phenotypes[phenotypes$site_year == site_year[i], ]), 
+                      nrow(phenotypes[phenotypes$site_year == site_year[i], ]))
+  five_folds = split(five_folds, 1:5)
   
-  chol_K = t(chol(pedi_rel))
-  ZK = chol_K[training_data$GID, ]
-  
-  gmodel = BGLR(y = training_data$Grain_Yield_BLUE, 
-                ETA = list(list(~factor(site_year), data=training_data, model="FIXED"), 
-                           list(X=ZK, model="BRR")), 
-                verbose=F, 
-                saveAt="estimate_accuracy4/")
-  
-  Y = data.frame(ID = testing_data[, "GID"], 
-                 obs = testing_data[, "Grain_Yield_BLUE"])
-  Y$pred = gmodel$ETA[[2]]$b[Y$ID]
-  accuracy_table[i, "g_acc_pear"] = cor(Y$pred, Y$obs)
-  
-  h2 = gmodel$ETA[[2]]$varB / var(Y$obs)
-  accuracy_table[i, "g_acc_gcor"] = accuracy_table[i, "g_acc_pear"] / sqrt(h2)
-  accuracy_table[i, "h2"] = h2
-  
-  
-  
-  pmodel = BGLR(y = training_data$Grain_Yield_BLUE, 
-                ETA = list(list(~factor(site_year), data=training_data, model="FIXED"), 
-                           list(X=phenomic[phenotypes$site_year != site_year[i], 3:64], model="BRR")), 
-                verbose=F, 
-                saveAt="estimate_accuracy4/")
-  
-  Y2 = Y
-  Y2$pred = as.matrix(phenomic[phenotypes$site_year == site_year[i], 3:64]) %*% pmodel$ETA[[2]]$b
-  
-  accuracy_table[i, "p_acc_pear"] = cor(Y2$pred, Y2$obs)
-  
-  kin = pedi_rel[testing_data$GID, testing_data$GID]
-  rownames(kin) = Y2$ID
-  colnames(kin) = Y2$ID
-  
-  accuracy_table[i, "p_acc_gcor"] = estimate_gcor(data=Y2, Knn=kin, method="MCMCglmm", normalize=F)[1]
-  }, error=function(e){cat(i, "\n", "Error:", conditionMessage(e), "\n")})
+  for (j in 1:5){
+    tryCatch({
+      testing = five_folds[[j]]
+      training = unlist(five_folds[-j])
+      
+      testing_data = phenotypes[testing, ]
+      training_data = phenotypes[training, ]
+      
+      Y = data.frame(ID = testing_data[, "GID"], 
+                     obs = testing_data[, "Grain_Yield_BLUE"])
+      
+      chol_K = t(chol(pedi_rel))
+      ZK = chol_K[training_data$GID, union(training_data$GID, testing_data$GID)]
+      
+      gmodel = BGLR(y = training_data$Grain_Yield_BLUE, 
+                    ETA = list(#list(~factor(site_year), data=training_data, model="FIXED"), 
+                               list(X=ZK, model="BRR")), 
+                    verbose=F, 
+                    saveAt="estimate_accuracy4/")
+      
+      
+      Y$pred = gmodel$ETA[[1]]$b[Y$ID]
+      accuracy_table[(i-1)*5 + j, "g_acc_pear"] = cor(Y$pred, Y$obs)
+      
+      h2 = gmodel$ETA[[1]]$varB / var(Y$obs)
+      accuracy_table[(i-1)*5 + j, "g_acc_gcor"] = accuracy_table[(i-1)*5 + j, "g_acc_pear"] / sqrt(h2)
+      accuracy_table[(i-1)*5 + j, "h2"] = h2
+      
+      
+      
+      pheno = phenomic[phenotypes$site_year == site_year[i], ]
+      pmodel = BGLR(y = training_data$Grain_Yield_BLUE, 
+                    ETA = list(list(X=pheno[match(training_data$GID, pheno$GID), 3:64], 
+                                    model="BRR")), 
+                    verbose=F, 
+                    saveAt="estimate_accuracy4/")
+      
+      Y2 = Y
+      Y2$pred = as.matrix(pheno[match(testing_data$GID, pheno$GID), 3:64]) %*% pmodel$ETA[[1]]$b
+      
+      accuracy_table[(i-1)*5 + j, "p_acc_pear"] = cor(Y2$pred, Y2$obs)
+      
+      kin = pedi_rel[testing_data$GID, testing_data$GID]
+      rownames(kin) = Y2$ID
+      colnames(kin) = Y2$ID
+      
+      accuracy_table[(i-1)*5 + j, "p_acc_gcor"] = estimate_gcor(data=Y2, Knn=kin, method="MCMCglmm", normalize=F)[1]
+      
+    }, error=function(e){cat(i, j, "\n", "Error:", conditionMessage(e), "\n")})
+    
+  }
 }
 
 saveRDS(accuracy_table, "estimate_accuracy4/accuracy_table.rds")
@@ -200,15 +215,16 @@ accuracy_table <- readRDS("estimate_accuracy4/accuracy_table.rds")
 
 
 
-accuracy_table_long <- data.frame(site_year = accuracy_table[rep(1:nrow(accuracy_table), each=4), 1], 
-                                  type = rep(colnames(accuracy_table)[2:5], nrow(accuracy_table)))
+accuracy_table_long <- accuracy_table[rep(1:nrow(accuracy_table), each=4), 1:2]
+accuracy_table_long$type <- rep(colnames(accuracy_table)[3:6], nrow(accuracy_table))
+
 accuracy_table_long$accuracy <- NA
 accuracy_table_long$h2 <- NA
 for (i in 1:nrow(accuracy_table)){
   accuracy_table_long$accuracy[((i-1)*4+1) : ((i-1)*4+4)] = 
-    accuracy_table[i, 2:5]
+    accuracy_table[i, 3:6]
   accuracy_table_long$h2[((i-1)*4+1) : ((i-1)*4+4)] = 
-    accuracy_table[i, 6]
+    accuracy_table[i, 7]
 }
 accuracy_table_long$accuracy <- unlist(accuracy_table_long$accuracy)
 

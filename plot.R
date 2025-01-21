@@ -7,24 +7,31 @@ data2 <- readRDS("estimate_accuracy2/accuracy_table_long.rds")
 data5 <- readRDS("estimate_accuracy5/accuracy_table_long.rds")
 data4 <- readRDS("estimate_accuracy4/accuracy_table_long.rds")
 
-data1 <- cbind(data = "poplar_Rincent", 
+data1 <- cbind(`Case Study` = "cite{rincent2018phenomic}", 
+               Crop = "Poplar", 
                data1)
-data2 <- cbind(data = "wheat_Rincent", 
+data2 <- cbind(`Case Study` = "cite{rincent2018phenomic}", 
+               Crop = "Wheat", 
                data2)
-data5 <- cbind(data = "Winn", 
+data5 <- cbind(`Case Study` = "cite{winn2023phenomic}", 
+               Crop = "Wheat", 
                trait = "GrainYield", 
                data5)
-colnames(data4)[1] <- "jth_fold"
-data4 <- cbind(data = "Krause", 
-               trait = "GrainYield", 
+# colnames(data4)[1] <- "jth_fold"
+data4 <- cbind(`Case Study` = "cite{krause_hyperspectral_2019}", 
+               Crop = "Wheat", 
                data4)
+colnames(data4)[3] <- "trait"
 
 accuracy <- rbind(rbind(rbind(data1, data2), data5), data4)
+colnames(accuracy)[3] <- "Trait"
 accuracy[accuracy$accuracy > 1, ]
 accuracy[accuracy$accuracy > 1, "accuracy"] <- 1
 accuracy[accuracy$accuracy == 1, ]
 
-accuracy_summary <- aggregate(. ~ data + trait + adjustment + `prediction method`, 
+
+
+accuracy_summary <- aggregate(. ~ `Case Study` + Crop + Trait + adjustment + `prediction method`, 
                               data=accuracy[, !colnames(accuracy) %in% c("type", "jth_fold")], 
                               FUN=function(x){c(mean=mean(x), se=sd(x)/sqrt(length(x)))})
 saveRDS(accuracy_summary, "plot/accuracy_summary.rds")
@@ -34,12 +41,12 @@ accuracy_sum <- data.frame(accuracy_summary[[1]])
 for (i in 2:length(accuracy_summary)){
   accuracy_sum = cbind(accuracy_sum, accuracy_summary[[i]])
 }
-colnames(accuracy_sum) <- c("data", "trait", "adjustment", "prediction_method", "accuracy.mean", 
+colnames(accuracy_sum) <- c("Case Study", "Crop", "Trait", "adjustment", "prediction_method", "accuracy.mean", 
                             "accuracy.se", "h2.mean", "h2.se")
 
 
 
-p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+p1 = ggplot(accuracy_sum[accuracy_sum$Trait == "CIRC.ORL" & 
                            accuracy_sum$adjustment == "predictive ability", ], 
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -56,7 +63,7 @@ p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
         legend.position="none") + 
   ggtitle(paste("Case 1: poplar circumference"))
 
-p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+p2 = ggplot(accuracy_sum[accuracy_sum$Trait == "CIRC.ORL" & 
                            accuracy_sum$adjustment == "prediction accuracy", ],
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -75,7 +82,7 @@ p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" &
 # save_plot(paste("plot/", "accuracy.pdf", sep=""), 
 #           plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
 
-p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+p3 = ggplot(accuracy_sum[accuracy_sum$Trait == "IRR_GrainYield" & 
                            accuracy_sum$adjustment == "predictive ability", ], 
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -92,7 +99,7 @@ p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
         legend.position="none") + 
   ggtitle(paste("Case 1: wheat grain yield"))
 
-p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+p4 = ggplot(accuracy_sum[accuracy_sum$Trait == "IRR_GrainYield" & 
                            accuracy_sum$adjustment == "prediction accuracy", ],
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -111,8 +118,8 @@ p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" &
 # save_plot(paste("plot/","accuracy.pdf", sep=""), 
 #           plot_grid(p3, p4, nrow=1, align = "vh", axis="btlr"))
 
-p5 = ggplot(accuracy_sum[accuracy_sum$data == "Winn" & 
-                           accuracy_sum$trait == "GrainYield" & 
+p5 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{winn2023phenomic}" & 
+                           accuracy_sum$Trait == "GrainYield" & 
                            accuracy_sum$adjustment == "predictive ability", ], 
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -129,8 +136,8 @@ p5 = ggplot(accuracy_sum[accuracy_sum$data == "Winn" &
         legend.position="none") + 
   ggtitle(paste("Case 2: wheat grain yield"))
 
-p6 = ggplot(accuracy_sum[accuracy_sum$data == "Winn" & 
-                           accuracy_sum$trait == "GrainYield" & 
+p6 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{winn2023phenomic}" & 
+                           accuracy_sum$Trait == "GrainYield" & 
                            accuracy_sum$adjustment == "prediction accuracy", ],
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -149,8 +156,8 @@ p6 = ggplot(accuracy_sum[accuracy_sum$data == "Winn" &
 # save_plot(paste("plot/","accuracy.pdf", sep=""), 
 #           plot_grid(p5, p6, nrow=1, align = "vh", axis="btlr"))
 
-p7 = ggplot(accuracy_sum[accuracy_sum$data == "Krause" & 
-                           accuracy_sum$trait == "GrainYield" & 
+p7 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral_2019}" & 
+                           accuracy_sum$Trait == "2013-14_Moderate Drought" & 
                            accuracy_sum$adjustment == "predictive ability", ], 
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -167,8 +174,8 @@ p7 = ggplot(accuracy_sum[accuracy_sum$data == "Krause" &
         legend.position="none") + 
   ggtitle(paste("Case 3: wheat grain yield"))
 
-p8 = ggplot(accuracy_sum[accuracy_sum$data == "Krause" & 
-                           accuracy_sum$trait == "GrainYield" & 
+p8 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral_2019}" & 
+                           accuracy_sum$Trait == "2013-14_Moderate Drought" & 
                            accuracy_sum$adjustment == "prediction accuracy", ],
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
@@ -196,40 +203,54 @@ save_plot(paste("plot/","accuracy.pdf", sep=""),
 
 
 
-accuracy_sum[, 5:8] <- sapply(accuracy_sum[, 5:8], FUN=function(x){round(x, digits = 3)})
-accuracy_sum$data <- factor(accuracy_sum$data, levels=as.factor(c("poplar_Rincent", "wheat_Rincent", "Winn", "Krause")))
-accuracy_sum$trait <- factor(accuracy_sum$trait, levels=as.factor(
+accuracy_sum[, 6:9] <- sapply(accuracy_sum[, 6:9], FUN=function(x){round(x, digits = 3)})
+accuracy_sum$`Case Study` <- factor(accuracy_sum$`Case Study`, levels=as.factor(c(
+                                                                  "cite{rincent2018phenomic}",
+                                                                  "cite{winn2023phenomic}", 
+                                                                  "cite{krause_hyperspectral_2019}")))
+accuracy_sum$Trait <- factor(accuracy_sum$Trait, levels=as.factor(
   c("HT.ORL", "BF.ORL", "BF.SAV", "BS.ORL", "BS.SAV", "CIRC.ORL", "CIRC.SAV", "RUST.ORL", "DRY_GrainYield", 
-    "DRY_HeadingDate", "IRR_GrainYield", "IRR_HeadingDate", "GrainYield")
+    "DRY_HeadingDate", "IRR_GrainYield", "IRR_HeadingDate", "GrainYield", 
+    "2013-14_Heat", "2013-14_Moderate Drought", "2013-14_Optimal Bed", "2013-14_Optimal Flat", "2013-14_Severe Drought", 
+    "2014-15_Moderate Drought", "2014-15_Optimal Bed", "2014-15_Optimal Flat", "2014-15_Severe Drought", 
+    "2015-16_Heat", "2015-16_Moderate Drought", "2015-16_Optimal Bed", "2015-16_Optimal Flat", "2015-16_Severe Drought", 
+    "2016-17_Heat", "2016-17_Moderate Drought", "2016-17_Optimal Bed", "2016-17_Optimal Flat", "2016-17_Severe Drought")
 ))
 accuracy_sum$adjustment <- factor(accuracy_sum$adjustment, 
                                   levels=as.factor(c("predictive ability", "prediction accuracy")))
 accuracy_sum$prediction_method <- factor(accuracy_sum$prediction_method, levels=as.factor(
   c("genomic", "phenomic", "phenomic-grain", "phenomic-leaf", "phenomic-fixed", "phenomic-mixed")
 ))
-accuracy_sum <- accuracy_sum[order(accuracy_sum$data, 
-                                   accuracy_sum$trait, 
+accuracy_sum <- accuracy_sum[order(accuracy_sum$`Case Study`, 
+                                   accuracy_sum$Trait, 
                                    accuracy_sum$prediction_method, 
                                    accuracy_sum$adjustment), ]
-accuracy_sum[, 1:4] <- sapply(accuracy_sum[, 1:4], FUN=function(x){as.character(x)})
+accuracy_sum[, 1:5] <- sapply(accuracy_sum[, 1:5], FUN=function(x){as.character(x)})
 
 
 
-accuracy_wide <- data.frame(Case_Study = rep(NA, 33),
-                            Trait = rep(NA, 33), 
-                            Prediction = rep(NA, 33), 
-                            r = rep(NA, 33), 
-                            r_y = rep(NA, 33), 
-                            h2 = rep(NA, 33))
+accuracy_wide <- data.frame(`Case Study` = rep(NA, 69),
+                            Crop = rep(NA, 69), 
+                            Trait = rep(NA, 69), 
+                            Prediction = rep(NA, 69), 
+                            r = rep(NA, 69), 
+                            r_y = rep(NA, 69), 
+                            h2 = rep(NA, 69))
 
-for (i in 1:33){
-  accuracy_wide[i, 1:3] = accuracy_sum[(i-1)*2+1, c(1, 2, 4)] 
-  accuracy_wide[i, 4] = paste(accuracy_sum[(i-1)*2+1, 5], "(", accuracy_sum[(i-1)*2+1, 6], ")", sep="")
-  accuracy_wide[i, 5] = paste(accuracy_sum[(i-1)*2+2, 5], "(", accuracy_sum[(i-1)*2+2, 6], ")", sep="")
-  accuracy_wide[i, 6] = paste(accuracy_sum[(i-1)*2+1, 7], "(", accuracy_sum[(i-1)*2+1, 8], ")", sep="")
+for (i in 1:69){
+  accuracy_wide[i, 1:4] = accuracy_sum[(i-1)*2+1, c(1, 2, 3, 5)] 
+  accuracy_wide[i, 5] = paste(accuracy_sum[(i-1)*2+1, 6], "(", accuracy_sum[(i-1)*2+1, 7], ")", sep="")
+  accuracy_wide[i, 6] = paste(accuracy_sum[(i-1)*2+2, 6], "(", accuracy_sum[(i-1)*2+2, 7], ")", sep="")
+  accuracy_wide[i, 7] = paste(accuracy_sum[(i-1)*2+1, 8], "(", accuracy_sum[(i-1)*2+1, 9], ")", sep="")
 }
 
-accuracy_wide$Trait <- c("Orl_Height", "Orl_Height", 
+accuracy_wide$Trait[32:69] <- sub("-.*_", "", accuracy_wide$Trait[32:69])
+accuracy_wide$Trait[32:69] <- sub("Moderate Drought", "ModDrt", accuracy_wide$Trait[32:69])
+accuracy_wide$Trait[32:69] <- sub("Optimal Bed", "OptBed", accuracy_wide$Trait[32:69])
+accuracy_wide$Trait[32:69] <- sub("Optimal Flat", "OptFlt", accuracy_wide$Trait[32:69])
+accuracy_wide$Trait[32:69] <- sub("Severe Drought", "SevDrt", accuracy_wide$Trait[32:69])
+accuracy_wide$Trait[32:69] <- paste(accuracy_wide$Trait[32:69], "_GrainYield", sep="")
+accuracy_wide$Trait[1:31] <- c("Orl_Height", "Orl_Height", 
                          "Orl_BudFlush", "Orl_BudFlush", 
                          "Sav_BudFlush", "Sav_BudFlush", 
                          "Orl_BudSet", "Orl_BudSet", 
@@ -241,7 +262,9 @@ accuracy_wide$Trait <- c("Orl_Height", "Orl_Height",
                          "Dry_HeadingDate", "Dry_HeadingDate", "Dry_HeadingDate", 
                          "Irr_GrainYield", "Irr_GrainYield", "Irr_GrainYield", 
                          "Irr_HeadingDate", "Irr_HeadingDate", "Irr_HeadingDate", 
-                         "GrainYield", "GrainYield", "GrainYield", "GrainYield", "GrainYield")
+                         "GrainYield", "GrainYield", "GrainYield")
+colnames(accuracy_wide)[1] <- "Case Study"
+# accuracy_wide$`Case Study` <- sub("\\\\", "", accuracy_wide$`Case Study`)
 
 saveRDS(accuracy_wide, "plot/accuracy_wide.rds")
 accuracy_wide <- readRDS("plot/accuracy_wide.rds")
