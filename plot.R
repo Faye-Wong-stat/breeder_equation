@@ -51,7 +51,7 @@ p1 = ggplot(accuracy_sum[accuracy_sum$Trait == "CIRC.ORL" &
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab(expression("r"["y"])) + 
@@ -68,7 +68,7 @@ p2 = ggplot(accuracy_sum[accuracy_sum$Trait == "CIRC.ORL" &
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab("r") + 
@@ -87,7 +87,7 @@ p3 = ggplot(accuracy_sum[accuracy_sum$Trait == "IRR_GrainYield" &
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab(expression("r"["y"])) + 
@@ -104,7 +104,7 @@ p4 = ggplot(accuracy_sum[accuracy_sum$Trait == "IRR_GrainYield" &
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab("r") + 
@@ -124,7 +124,7 @@ p5 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{winn2023phenomic}" &
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab(expression("r"["y"])) + 
@@ -142,7 +142,7 @@ p6 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{winn2023phenomic}" &
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab("r") + 
@@ -162,7 +162,7 @@ p7 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab(expression("r"["y"])) + 
@@ -180,7 +180,7 @@ p8 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral
             aes(x=prediction_method)) +
   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
+                    colour=prediction_method), width=0.1, linewidth=0.35) + 
   facet_wrap(~adjustment) +
   ylim(0, 1) + 
   ylab("r") + 
