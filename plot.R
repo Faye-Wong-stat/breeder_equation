@@ -225,6 +225,9 @@ accuracy_sum <- accuracy_sum[order(accuracy_sum$`Case Study`,
                                    accuracy_sum$Trait, 
                                    accuracy_sum$prediction_method, 
                                    accuracy_sum$adjustment), ]
+
+saveRDS(accuracy_sum, "plot/accuracy_sum.rds")
+accuracy_sum <- readRDS("plot/accuracy_sum.rds")
 accuracy_sum[, 1:5] <- sapply(accuracy_sum[, 1:5], FUN=function(x){as.character(x)})
 
 
@@ -269,42 +272,6 @@ colnames(accuracy_wide)[1] <- "Case Study"
 saveRDS(accuracy_wide, "plot/accuracy_wide.rds")
 accuracy_wide <- readRDS("plot/accuracy_wide.rds")
 write.csv(accuracy_wide, "plot/accuracy_wide.csv", row.names = F, quote = F)
-
-accuracy_wide
-       Case_Study             Trait     Prediction            r          r_y             h2
-  poplar_Rincent        Orl_Height        genomic  0.565(0.03) 0.684(0.032)  0.687(0.043)
-  poplar_Rincent        Orl_Height       phenomic  0.656(0.01) 0.714(0.077)  0.687(0.043)
-  poplar_Rincent      Orl_BudFlush        genomic 0.722(0.019) 0.801(0.026)  0.813(0.012)
-  poplar_Rincent      Orl_BudFlush       phenomic 0.095(0.055) 0.017(0.021)  0.813(0.012)
-  poplar_Rincent      Sav_BudFlush        genomic  0.729(0.02) 0.848(0.041)  0.748(0.043)
-  poplar_Rincent      Sav_BudFlush       phenomic 0.333(0.039) 0.201(0.028)  0.748(0.043)
-  poplar_Rincent        Orl_BudSet        genomic 0.751(0.031)   0.86(0.05)  0.745(0.049)
-  poplar_Rincent        Orl_BudSet       phenomic  0.545(0.02)  0.55(0.028)  0.745(0.049)
-  poplar_Rincent        Sav_BudSet        genomic  0.608(0.04) 0.669(0.043)   0.828(0.03)
- poplar_Rincent        Sav_BudSet       phenomic 0.337(0.017) 0.352(0.016)   0.828(0.03)
- poplar_Rincent Orl_Circumference        genomic  0.61(0.018) 0.722(0.039) 0.726(0.048)
- poplar_Rincent Orl_Circumference       phenomic 0.718(0.022) 0.754(0.021) 0.726(0.048)
- poplar_Rincent Sav_Circumference        genomic 0.777(0.017) 0.987(0.013) 0.542(0.024)
- poplar_Rincent Sav_Circumference       phenomic 0.809(0.014) 0.736(0.024) 0.542(0.024)
- poplar_Rincent          Orl_Rust        genomic 0.622(0.015) 0.681(0.024) 0.838(0.035)
- poplar_Rincent          Orl_Rust       phenomic 0.443(0.046) 0.452(0.044) 0.838(0.035)
-  wheat_Rincent    Dry_GrainYield        genomic 0.238(0.067) 0.407(0.121) 0.616(0.128)
-  wheat_Rincent    Dry_GrainYield phenomic-grain 0.543(0.047) 0.641(0.084) 0.616(0.128)
-  wheat_Rincent    Dry_GrainYield  phenomic-leaf 0.314(0.066) 0.334(0.077) 0.616(0.128)
-  wheat_Rincent   Dry_HeadingDate        genomic 0.487(0.041) 0.657(0.066) 0.616(0.135)
-  wheat_Rincent   Dry_HeadingDate phenomic-grain 0.806(0.033) 0.855(0.013) 0.616(0.135)
-  wheat_Rincent   Dry_HeadingDate  phenomic-leaf  0.848(0.02) 0.893(0.017) 0.616(0.135)
-  wheat_Rincent    Irr_GrainYield        genomic   0.4(0.059) 0.668(0.088)  0.58(0.159)
-  wheat_Rincent    Irr_GrainYield phenomic-grain 0.527(0.053)  0.65(0.071)  0.58(0.159)
-  wheat_Rincent    Irr_GrainYield  phenomic-leaf 0.276(0.083) 0.229(0.089)  0.58(0.159)
-  wheat_Rincent   Irr_HeadingDate        genomic 0.511(0.033) 0.662(0.056) 0.682(0.096)
-  wheat_Rincent   Irr_HeadingDate phenomic-grain 0.618(0.027)  0.74(0.035) 0.682(0.096)
-  wheat_Rincent   Irr_HeadingDate  phenomic-leaf   0.8(0.023) 0.862(0.027) 0.682(0.096)
-           Winn        GrainYield        genomic  0.307(0.01) 0.711(0.032) 0.189(0.014)
-           Winn        GrainYield phenomic-fixed 0.472(0.014) 0.757(0.192) 0.189(0.014)
-           Winn        GrainYield phenomic-mixed  0.47(0.015)  0.545(0.21) 0.189(0.014)
-         Krause        GrainYield        genomic 0.283(0.028) 0.619(0.052)  0.201(0.02)
-         Krause        GrainYield       phenomic  0.15(0.051) 0.166(0.056)  0.201(0.02)
 
 
 
@@ -369,105 +336,204 @@ save_plot(paste("plot/", "p1_p3.pdf", sep=""),
 
 
 
-
-p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
-                           accuracy_sum$adjustment == "predictive ability", ], 
-            aes(x=prediction_method)) +
-  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
-  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
-  facet_wrap(~adjustment) +
-  ylim(0, 1) + 
-  ylab(expression("r"["y"])) + 
-  scale_colour_manual(values=c("blue", "gold3")) + 
-  theme_minimal_grid(font_size=9) +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 60, vjust = 0.6),
-        #     axis.ticks.x = element_blank(),
-        legend.position="none") + 
-  ggtitle(paste("Case 1: poplar circumference"))
-
-p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
-                           accuracy_sum$adjustment == "prediction accuracy", ],
-            aes(x=prediction_method)) +
-  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
-  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
-  facet_wrap(~adjustment) +
-  ylim(0, 1) + 
-  ylab("r") + 
-  scale_colour_manual(values=c("blue", "gold3")) + 
-  theme_minimal_grid(font_size=9) +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 60, vjust = 0.6),
-        #     axis.ticks.x = element_blank(),
-        legend.position="none") 
-
-# save_plot(paste("plot/", "accuracy.pdf", sep=""), 
-#           plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
-
-p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
-                           accuracy_sum$adjustment == "predictive ability" &
-                           accuracy_sum$prediction_method != "phenomic-leaf", ], 
-            aes(x=prediction_method)) +
-  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
-  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
-  facet_wrap(~adjustment) +
-  ylim(0, 1) + 
-  ylab(expression("r"["y"])) + 
-  scale_x_discrete(labels= c("genomic", "phenomic")) + 
-  scale_colour_manual(values=c("blue", "gold3")) + 
-  theme_minimal_grid(font_size=9) +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 60, vjust = 0.6),
-        #     axis.ticks.x = element_blank(),
-        legend.position="none") + 
-  ggtitle(paste("Case 2: wheat grain yield"))
-
-p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
-                           accuracy_sum$adjustment == "prediction accuracy" &
-                           accuracy_sum$prediction_method != "phenomic-leaf", ],
-            aes(x=prediction_method)) +
-  geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
-  geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
-                    colour=prediction_method), width=0.1) + 
-  facet_wrap(~adjustment) +
-  ylim(0, 1) + 
-  ylab("r") + 
-  scale_x_discrete(labels= c("genomic", "phenomic")) + 
-  scale_colour_manual(values=c("blue", "gold3")) + 
-  theme_minimal_grid(font_size=9) +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 60, vjust = 0.6),
-        #     axis.ticks.x = element_blank(),
-        legend.position="none") 
-
-# save_plot(paste("plot/","accuracy.pdf", sep=""), 
-#           plot_grid(p3, p4, nrow=1, align = "vh", axis="btlr"))
-
-save_plot(paste("plot/","p1_p2_p3_p4.pdf", sep=""), 
-          plot_grid(plot_grid(p1, p2, p3, p4, nrow=1, align = "vh", axis="btlr", 
-                              labels=c("a", NA, "b", NA))), 
-          base_asp = 3.236)
-
+# p1 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+#                            accuracy_sum$adjustment == "predictive ability", ], 
+#             aes(x=prediction_method)) +
+#   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+#   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+#                     colour=prediction_method), width=0.1) + 
+#   facet_wrap(~adjustment) +
+#   ylim(0, 1) + 
+#   ylab(expression("r"["y"])) + 
+#   scale_colour_manual(values=c("blue", "gold3")) + 
+#   theme_minimal_grid(font_size=9) +
+#   theme(axis.title.x = element_blank(),
+#         axis.text.x = element_text(angle = 60, vjust = 0.6),
+#         #     axis.ticks.x = element_blank(),
+#         legend.position="none") + 
+#   ggtitle(paste("Case 1: poplar circumference"))
+# 
+# p2 = ggplot(accuracy_sum[accuracy_sum$trait == "CIRC.ORL" & 
+#                            accuracy_sum$adjustment == "prediction accuracy", ],
+#             aes(x=prediction_method)) +
+#   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+#   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+#                     colour=prediction_method), width=0.1) + 
+#   facet_wrap(~adjustment) +
+#   ylim(0, 1) + 
+#   ylab("r") + 
+#   scale_colour_manual(values=c("blue", "gold3")) + 
+#   theme_minimal_grid(font_size=9) +
+#   theme(axis.title.x = element_blank(),
+#         axis.text.x = element_text(angle = 60, vjust = 0.6),
+#         #     axis.ticks.x = element_blank(),
+#         legend.position="none") 
+# 
+# # save_plot(paste("plot/", "accuracy.pdf", sep=""), 
+# #           plot_grid(p1, p2, nrow=1, align = "vh", axis="btlr"))
+# 
+# p3 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+#                            accuracy_sum$adjustment == "predictive ability" &
+#                            accuracy_sum$prediction_method != "phenomic-leaf", ], 
+#             aes(x=prediction_method)) +
+#   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+#   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+#                     colour=prediction_method), width=0.1) + 
+#   facet_wrap(~adjustment) +
+#   ylim(0, 1) + 
+#   ylab(expression("r"["y"])) + 
+#   scale_x_discrete(labels= c("genomic", "phenomic")) + 
+#   scale_colour_manual(values=c("blue", "gold3")) + 
+#   theme_minimal_grid(font_size=9) +
+#   theme(axis.title.x = element_blank(),
+#         axis.text.x = element_text(angle = 60, vjust = 0.6),
+#         #     axis.ticks.x = element_blank(),
+#         legend.position="none") + 
+#   ggtitle(paste("Case 2: wheat grain yield"))
+# 
+# p4 = ggplot(accuracy_sum[accuracy_sum$trait == "IRR_GrainYield" & 
+#                            accuracy_sum$adjustment == "prediction accuracy" &
+#                            accuracy_sum$prediction_method != "phenomic-leaf", ],
+#             aes(x=prediction_method)) +
+#   geom_point(aes(y=accuracy.mean, colour=prediction_method), size=0.75) + 
+#   geom_errorbar(aes(ymin=accuracy.mean-accuracy.se, ymax=accuracy.mean+accuracy.se, 
+#                     colour=prediction_method), width=0.1) + 
+#   facet_wrap(~adjustment) +
+#   ylim(0, 1) + 
+#   ylab("r") + 
+#   scale_x_discrete(labels= c("genomic", "phenomic")) + 
+#   scale_colour_manual(values=c("blue", "gold3")) + 
+#   theme_minimal_grid(font_size=9) +
+#   theme(axis.title.x = element_blank(),
+#         axis.text.x = element_text(angle = 60, vjust = 0.6),
+#         #     axis.ticks.x = element_blank(),
+#         legend.position="none") 
+# 
+# # save_plot(paste("plot/","accuracy.pdf", sep=""), 
+# #           plot_grid(p3, p4, nrow=1, align = "vh", axis="btlr"))
+# 
+# save_plot(paste("plot/","p1_p2_p3_p4.pdf", sep=""), 
+#           plot_grid(plot_grid(p1, p2, p3, p4, nrow=1, align = "vh", axis="btlr", 
+#                               labels=c("a", NA, "b", NA))), 
+#           base_asp = 3.236)
 
 
 
+accuracy_sum <- readRDS("plot/accuracy_sum.rds")
+accuracy_sum[, 1:5] <- sapply(accuracy_sum[, 1:5], FUN=function(x){as.character(x)})
 
 
 
+dim(accuracy_sum)
+# [1] 138   9
+dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{rincent2018phenomic}" &
+                   accuracy_sum$Crop == "Poplar", ])
+# [1] 32  9
+dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{rincent2018phenomic}" &
+                   accuracy_sum$Crop == "Wheat", ])
+# [1] 24  9
+dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{winn2023phenomic}", ])
+# [1] 6 9
+dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral_2019}", ])
+# [1] 76  9
+138-32-76
+# 30
+
+accuracy_diff <- data.frame(`Case Study` = rep(NA, 37), 
+                            Crop = NA, 
+                            Trait = NA, 
+                            # adjustment = NA, 
+                            Difference_Type = NA, 
+                            Difference_ry = NA, 
+                            Difference_r = NA)
+for (i in 1:8){
+  # print(paste("i: ", i, sep=""))
+  # print((i-1)*4+1)
+  accuracy_diff[i, 1:3] = accuracy_sum[(i-1)*4+1, 1:3]
+  accuracy_diff[i, 4] = "Phenomic - Genomic"
+  accuracy_diff[i, 5] = accuracy_sum[(i-1)*4+2, 6] - accuracy_sum[(i-1)*4+1, 6]
+  accuracy_diff[i, 6] = accuracy_sum[(i-1)*4+4, 6] - accuracy_sum[(i-1)*4+3, 6]
+}
+for (i in seq(9, 15, 2)){
+  # print(paste("i: ", i, sep=""))
+  # print(((i-9)*6/2+1+32) : ((i-9)*6/2+6+32))
+  accuracy_diff[i:(i+1), 1:3] = accuracy_sum[((i-9)*6/2+1+32) : ((i-9)*6/2+2+32), 1:3]
+  accuracy_diff[i, 4] = "Phenomic_Grain - Genomic"
+  accuracy_diff[i+1, 4] = "Phenomic_Leaf - Genomic"
+  accuracy_diff[i, 5] = accuracy_sum[(i-9)*6/2+2+32, 6] - accuracy_sum[(i-9)*6/2+1+32, 6]
+  accuracy_diff[i+1, 5] = accuracy_sum[(i-9)*6/2+3+32, 6] - accuracy_sum[(i-9)*6/2+1+32, 6]
+  accuracy_diff[i, 6] = accuracy_sum[(i-9)*6/2+5+32, 6] - accuracy_sum[(i-9)*6/2+4+32, 6]
+  accuracy_diff[i+1, 6] = accuracy_sum[(i-9)*6/2+6+32, 6] - accuracy_sum[(i-9)*6/2+4+32, 6]
+}
+for (i in 17){
+  # print(paste("i: ", i, sep=""))
+  # print(((i-17)*6/2+1+56) : ((i-17)*6/2+6+56))
+  accuracy_diff[i:(i+1), 1:3] = accuracy_sum[((i-17)*6/2+1+56) : ((i-17)*6/2+2+56), 1:3]
+  accuracy_diff[i, 4] = "Phenomic_Fixed - Genomic"
+  accuracy_diff[i+1, 4] = "Phenomic_Random - Genomic"
+  accuracy_diff[i, 5] = accuracy_sum[(i-17)*6/2+2+56, 6] - accuracy_sum[(i-17)*6/2+1+56, 6]
+  accuracy_diff[i+1, 5] = accuracy_sum[(i-17)*6/2+3+56, 6] - accuracy_sum[(i-17)*6/2+1+56, 6]
+  accuracy_diff[i, 6] = accuracy_sum[(i-17)*6/2+5+56, 6] - accuracy_sum[(i-17)*6/2+4+56, 6]
+  accuracy_diff[i+1, 6] = accuracy_sum[(i-17)*6/2+6+56, 6] - accuracy_sum[(i-17)*6/2+4+56, 6]
+}
+for (i in 19:37){
+  # print(paste("i: ", i, sep=""))
+  # print((i-19)*4+1+62)
+  accuracy_diff[i, 1:3] = accuracy_sum[(i-19)*4+1+62, 1:3]
+  accuracy_diff[i, 4] = "Phenomic - Genomic"
+  accuracy_diff[i, 5] = accuracy_sum[(i-19)*4+2+62, 6] - accuracy_sum[(i-19)*4+1+62, 6]
+  accuracy_diff[i, 6] = accuracy_sum[(i-19)*4+4+62, 6] - accuracy_sum[(i-19)*4+3+62, 6]
+}
+
+saveRDS(accuracy_diff, "plot/accuracy_diff.rds")
+accuracy_diff <- readRDS("plot/accuracy_diff.rds")
 
 
 
+p9 <- ggplot(accuracy_diff, aes(x=Difference_ry, y=Difference_r)) + 
+  geom_point(size=0.75, colour=prediction_method) + 
+  geom_hline(yintercept=0) + 
+  geom_vline(xintercept=0) + 
+  xlim(-1, 1) + 
+  ylim(-1, 1) + 
+  xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
+  ylab(expression(r[phenomic]-r[genomic])) + 
+  theme_minimal_grid(font_size=7)
+# save_plot(paste("plot/", "p9.pdf", sep=""),
+#           plot_grid(p9))
 
 
 
+accuracy_sum <- readRDS("plot/accuracy_sum.rds")
+accuracy_sum[, 1:5] <- sapply(accuracy_sum[, 1:5], FUN=function(x){as.character(x)})
 
+accuracy_diff2 <- data.frame(`Case Study` = rep(NA, 69),
+                             Crop = rep(NA, 69), 
+                             Trait = rep(NA, 69), 
+                             Prediction = rep(NA, 69), 
+                             Difference = NA)
 
+for (i in 1:69){
+  accuracy_diff2[i, 1:4] = accuracy_sum[(i-1)*2+1, c(1, 2, 3, 5)] 
+  accuracy_diff2[i, 5] = accuracy_sum[(i-1)*2+2, 6] - accuracy_sum[(i-1)*2+1, 6]
+  #   paste(accuracy_sum[(i-1)*2+1, 6], "(", accuracy_sum[(i-1)*2+1, 7], ")", sep="")
+  # accuracy_wide[i, 6] = paste(accuracy_sum[(i-1)*2+2, 6], "(", accuracy_sum[(i-1)*2+2, 7], ")", sep="")
+  # accuracy_wide[i, 7] = paste(accuracy_sum[(i-1)*2+1, 8], "(", accuracy_sum[(i-1)*2+1, 9], ")", sep="")
+}
 
+accuracy_diff2[accuracy_diff2$Prediction %in% c("phenomic-grain", "phenomic-leaf", 
+                                                "phenomic-fixed", "phenomic-mixed"), 
+               "Prediction"] <- "phenomic"
 
-
+p10 <- ggplot(accuracy_diff2, aes(x=Prediction, y=Difference)) + 
+  geom_point(size=0.75) + 
+  geom_hline(yintercept=0) + 
+  xlab("prediction method") + 
+  ylab(expression(r-r[y])) + 
+  theme_minimal_grid(font_size=7)
+save_plot(paste("plot/", "p9_p10.pdf", sep=""),
+          plot_grid(p9, p10, nrow=1, align = "vh", axis="btlr", labels=c("a", "b")), 
+          base_width = 5.5, base_height = 1.75)
 
 
 
