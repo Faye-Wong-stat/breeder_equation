@@ -1,4 +1,5 @@
 setwd("~/breeder_equation_project/")
+library(dplyr)
 library(ggplot2)
 library(cowplot)
 
@@ -199,7 +200,7 @@ save_plot(paste("plot/","accuracy.pdf", sep=""),
                     ncol=1, align="vh", axis="btlr"
                     # labels = "auto"
                     ),
-          base_width = 5.5, base_height = 3.5)
+          base_width = 5.6, base_height = 3.5)
 
 
 
@@ -487,20 +488,10 @@ for (i in 19:37){
 
 saveRDS(accuracy_diff, "plot/accuracy_diff.rds")
 accuracy_diff <- readRDS("plot/accuracy_diff.rds")
-
-
-
-p9 <- ggplot(accuracy_diff, aes(x=Difference_ry, y=Difference_r)) + 
-  geom_point(size=0.75, colour=prediction_method) + 
-  geom_hline(yintercept=0) + 
-  geom_vline(xintercept=0) + 
-  xlim(-1, 1) + 
-  ylim(-1, 1) + 
-  xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
-  ylab(expression(r[phenomic]-r[genomic])) + 
-  theme_minimal_grid(font_size=7)
-# save_plot(paste("plot/", "p9.pdf", sep=""),
-#           plot_grid(p9))
+accuracy_diff$Case.Study <- factor(accuracy_diff$Case.Study, levels = as.factor(c(
+                                                                  "cite{rincent2018phenomic}",
+                                                                  "cite{winn2023phenomic}", 
+                                                                  "cite{krause_hyperspectral_2019}")))
 
 
 
@@ -524,16 +515,83 @@ for (i in 1:69){
 accuracy_diff2[accuracy_diff2$Prediction %in% c("phenomic-grain", "phenomic-leaf", 
                                                 "phenomic-fixed", "phenomic-mixed"), 
                "Prediction"] <- "phenomic"
+accuracy_diff2$Case.Study <- factor(accuracy_diff2$Case.Study, levels = as.factor(c(
+                                                                  "cite{rincent2018phenomic}",
+                                                                  "cite{winn2023phenomic}", 
+                                                                  "cite{krause_hyperspectral_2019}")))
+accuracy_diff2$Prediction <- factor(accuracy_diff2$Prediction, levels=as.factor(c(
+  "genomic", "phenomic"
+)))
+accuracy_diff2$interaction <- interaction(accuracy_diff2$Case.Study, accuracy_diff2$Prediction, sep="-")
+levels(accuracy_diff2$interaction)
+accuracy_diff2$x_pos <- sapply(accuracy_diff2$interaction, FUN=function(x) {
+  case_when(x=="cite{rincent2018phenomic}-genomic" ~ 0.8, 
+            x=="cite{winn2023phenomic}-genomic" ~ 1, 
+            x=="cite{krause_hyperspectral_2019}-genomic" ~ 1.2, 
+            x=="cite{rincent2018phenomic}-phenomic" ~ 1.7, 
+            x=="cite{winn2023phenomic}-phenomic" ~ 1.9, 
+            x=="cite{krause_hyperspectral_2019}-phenomic" ~ 2.1)
+})
 
-p10 <- ggplot(accuracy_diff2, aes(x=Prediction, y=Difference)) + 
-  geom_point(size=0.75) + 
+
+
+
+p9 <- ggplot(accuracy_diff) + 
+  geom_segment(aes(x=-1, y=0, xend=1, yend=0), arrow=arrow(length = unit(0.03, "npc"), ends="both")) + 
+  geom_segment(aes(x=0, y=-1, xend=0, yend=1), arrow=arrow(length = unit(0.03, "npc"), ends="both")) + 
+  annotate("text", x=c(0.75, -0.75, 0.2, 0.2), y=c(0.2, 0.2, 0.75, -0.75), 
+           label=c("phenomic\nappears good", 
+                   "genomic\nappears good", 
+                   "phenomic\nis good", 
+                   "genomic\nis good"), 
+           size=5/.pt) + 
+  geom_abline(intercept = 0, slope=1) + 
+  geom_point(aes(x=Difference_ry, y=Difference_r, colour=Case.Study), size=0.65) + 
+  # geom_hline(yintercept=0) + 
+  # geom_vline(xintercept=0) + 
+  xlim(-1, 1) + 
+  ylim(-1, 1) + 
+  xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
+  ylab(expression(r[phenomic]-r[genomic])) + 
+  scale_colour_manual(values=c("blue", "red", "gold3")) +
+  coord_equal(ratio=1) +
+  theme_minimal_grid(font_size=7)+
+  theme(
+    # axis.title.x = element_blank(),
+    # axis.text.x = element_text(angle = 60, vjust = 0.6),
+    # axis.ticks.x = element_blank(), 
+    legend.position="none") 
+# save_plot(paste("plot/", "p9.pdf", sep=""),
+#           plot_grid(p9))
+
+p10 <- ggplot(accuracy_diff2) + 
   geom_hline(yintercept=0) + 
-  xlab("prediction method") + 
+  geom_segment(aes(x=0.3, y=-0.2, xend=0.3, yend=0.4), arrow=arrow(length = unit(0.03, "npc"), ends="both")) + 
+  annotate("text", x=c(0.6, 0.6), y=c(0.35, -0.17), 
+           label=c("accuracy\nunderestimated", 
+                   "accuracy\noverestimated"), 
+           size=5/.pt) + 
+  geom_point(aes(x=x_pos, y=Difference, colour=Case.Study), size=0.65, 
+             position = position_jitter(width=0.05, height=0)) + 
+  # xlab("prediction method") + 
   ylab(expression(r-r[y])) + 
-  theme_minimal_grid(font_size=7)
+  # coord_equal(ratio=1) + 
+  scale_x_continuous(breaks=c(1, 1.9), labels=c("genomic", "phenomic")) + 
+  scale_colour_manual(labels=c("Rincent et al.", "Winn et al.", "Krause et al."), values=c("blue", "red", "gold3")) + 
+  coord_equal(ratio=3.27) +
+  theme_minimal_grid(font_size=7) + 
+  theme(axis.title.x = element_blank())
+
+legend10 <- get_legend(p10)
+
 save_plot(paste("plot/", "p9_p10.pdf", sep=""),
-          plot_grid(p9, p10, nrow=1, align = "vh", axis="btlr", labels=c("a", "b")), 
-          base_width = 5.5, base_height = 1.75)
+          plot_grid(p9, p10+theme(legend.position="none"), legend10, nrow=1, 
+                    align = "vh", axis="btlr",
+                    rel_widths = c(1, 1, 0.3), 
+                    labels=c("a", "b")), 
+          base_width = 5.6
+          , base_height = 2.5
+          )
 
 
 
