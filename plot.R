@@ -533,6 +533,9 @@ accuracy_diff2$x_pos <- sapply(accuracy_diff2$interaction, FUN=function(x) {
             x=="cite{krause_hyperspectral_2019}-phenomic" ~ 2.1)
 })
 
+saveRDS(accuracy_diff2, "plot/accuracy_diff2.rds")
+accuracy_diff2 <- readRDS("plot/accuracy_diff2.rds")
+
 
 
 
@@ -575,10 +578,9 @@ p10 <- ggplot(accuracy_diff2) +
              position = position_jitter(width=0.05, height=0)) + 
   # xlab("prediction method") + 
   ylab(expression(r-r[y])) + 
-  # coord_equal(ratio=1) + 
   scale_x_continuous(breaks=c(1, 1.9), labels=c("genomic", "phenomic")) + 
   scale_colour_manual(labels=c("Rincent et al.", "Winn et al.", "Krause et al."), values=c("blue", "red", "gold3")) + 
-  coord_equal(ratio=3.27) +
+  coord_fixed(ratio=3.27) +
   theme_minimal_grid(font_size=7) + 
   theme(axis.title.x = element_blank())
 
@@ -586,20 +588,93 @@ legend10 <- get_legend(p10)
 
 save_plot(paste("plot/", "p9_p10.pdf", sep=""),
           plot_grid(p9, p10+theme(legend.position="none"), legend10, nrow=1, 
-                    align = "vh", axis="btlr",
+                    align = "h", axis="bt",
                     rel_widths = c(1, 1, 0.3), 
                     labels=c("a", "b")), 
           base_width = 5.6
           , base_height = 2.5
           )
 
+p11 <- ggplot() + 
+  geom_rect(aes(xmin=c(0, 0, -Inf), xmax=c(Inf, Inf, 0), 
+                ymin=c(0, -Inf, -Inf), ymax=c(Inf, 0, 0)), 
+            fill=c("green", "orange", "green"), alpha=0.3) + 
+  annotate("text", x=c(0.5, 0.75, -0.85), y=c(0.9, -0.75, -0.5),
+           label=c("phenomic appears\nbetter and is better",
+                   "phenomic appears\nbetter but is worse",
+                   "phenomic\nappears worse\nand is worse"),
+           size=5/.pt) +
+  geom_abline(intercept = 0, slope=1) + 
+  geom_point(data=accuracy_diff, aes(x=Difference_ry, y=Difference_r, colour=Case.Study), size=0.65) + 
+  # geom_hline(yintercept=0) + 
+  # geom_vline(xintercept=0) + 
+  xlim(-1, 1) + 
+  ylim(-1, 1) + 
+  xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
+  ylab(expression(r[phenomic]-r[genomic])) + 
+  scale_colour_manual(values=c("blue", "red", "gold3")) +
+  coord_equal(ratio=1) +
+  theme_minimal_grid(font_size=7)+
+  theme(
+    # axis.title.x = element_blank(),
+    # axis.text.x = element_text(angle = 60, vjust = 0.6),
+    # axis.ticks.x = element_blank(), 
+    legend.position="none") 
 
+save_plot(paste("plot/", "p11_p10.pdf", sep=""),
+          plot_grid(p11, p10+theme(legend.position="none"), legend10, nrow=1, 
+                    align = "h", axis="bt",
+                    rel_widths = c(1, 1, 0.3), 
+                    labels=c("a", "b")), 
+          base_width = 5.6
+          , base_height = 2.5
+)
 
+x <- seq(-1, 1, 0.001)
+y <- x
+dat <- data.frame(x, y)
+dat$xlower <- -1
+dat$xupper <- 1
 
+p12 <- ggplot() + 
+  geom_ribbon(data=dat, 
+            aes(x=x, 
+                ymin=y, ymax=xupper), 
+            fill=c("green"), alpha=0.3) + 
+  geom_ribbon(data=dat, 
+              aes(x=x, 
+                  ymin=xlower, ymax=y), 
+              fill=c("orange"), alpha=0.3) + 
+  # annotate("text", x=c(0.75, -0.75), y=c(-0.75, 0.75),
+  #          label=c("phenomic appears\ngood and is good",
+  #                  "phenomic appears\ngood but is bad",
+  #                  "phenomic\nappears bad\nand is bad"),
+  #          size=5/.pt) +
+  geom_abline(intercept = 0, slope=1) + 
+  geom_point(data=accuracy_diff, aes(x=Difference_ry, y=Difference_r, colour=Case.Study), size=0.65) + 
+  # geom_hline(yintercept=0) + 
+  # geom_vline(xintercept=0) + 
+  xlim(-1, 1) + 
+  ylim(-1, 1) + 
+  xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
+  ylab(expression(r[phenomic]-r[genomic])) + 
+  scale_colour_manual(values=c("blue", "red", "gold3")) +
+  coord_equal(ratio=1) +
+  theme_minimal_grid(font_size=7)+
+  theme(
+    # axis.title.x = element_blank(),
+    # axis.text.x = element_text(angle = 60, vjust = 0.6),
+    # axis.ticks.x = element_blank(), 
+    legend.position="none") 
 
-
-
- 
+save_plot(paste("plot/", "p12_p10.pdf", sep=""),
+          plot_grid(p12, p10+theme(legend.position="none"), legend10, nrow=1, 
+                    align = "h", axis="bt",
+                    rel_widths = c(1, 1, 0.3), 
+                    labels=c("a", "b")), 
+          base_width = 5.6
+          , base_height = 2.5
+)
 
  
 
