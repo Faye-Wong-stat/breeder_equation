@@ -193,9 +193,9 @@ p8 = ggplot(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral
         legend.position="none") 
 
 save_plot(paste("plot/","accuracy.pdf", sep=""), 
-          plot_grid(plot_grid(p1, p2, p3, p4, nrow=1, align = "vh", axis="btlr", labels=c("a", NA, "b", NA)), 
+          plot_grid(plot_grid(p1, p2, p3, p4, nrow=1, align = "vh", axis="btlr", labels=c("A", NA, "B", NA)), 
                     # plot_grid(p3, p4, nrow=1, align = "vh", axis="btlr"), 
-                    plot_grid(p5, p6, p7, p8, nrow=1, align = "vh", axis="btlr", labels=c("c", NA, "d", NA)), 
+                    plot_grid(p5, p6, p7, p8, nrow=1, align = "vh", axis="btlr", labels=c("C", NA, "D", NA)), 
                     # plot_grid(p7, p8, nrow=1, align = "vh", axis="btlr"), 
                     ncol=1, align="vh", axis="btlr"
                     # labels = "auto"
@@ -486,6 +486,24 @@ for (i in 19:37){
   accuracy_diff[i, 6] = accuracy_sum[(i-19)*4+4+62, 6] - accuracy_sum[(i-19)*4+3+62, 6]
 }
 
+dim(accuracy_diff)
+# [1] 37  6
+# predictive ability is higher in phenomic prediction
+sum(accuracy_diff$Difference_ry > 0) 
+# [1] 30
+# prediction accurary is higher in phenomic prediction
+sum(accuracy_diff$Difference_r > 0) 
+# [1] 22
+# predictive ability and accuracy are both higher in phenomic prediction
+sum(accuracy_diff$Difference_ry > 0 & accuracy_diff$Difference_r > 0)
+# [1] 22
+# predictive ability is higher but prediction accuracy isn't in phenomic prediction
+sum(accuracy_diff$Difference_ry > 0 & accuracy_diff$Difference_r < 0)
+# [1] 8
+# predictive ability and prediction accuracy are both lower in phenomic prediciton
+sum(accuracy_diff$Difference_ry < 0 & accuracy_diff$Difference_r < 0)
+# [1] 7
+
 saveRDS(accuracy_diff, "plot/accuracy_diff.rds")
 accuracy_diff <- readRDS("plot/accuracy_diff.rds")
 accuracy_diff$Case.Study <- factor(accuracy_diff$Case.Study, levels = as.factor(c(
@@ -543,10 +561,10 @@ p9 <- ggplot(accuracy_diff) +
   geom_segment(aes(x=-1, y=0, xend=1, yend=0), arrow=arrow(length = unit(0.03, "npc"), ends="both")) + 
   geom_segment(aes(x=0, y=-1, xend=0, yend=1), arrow=arrow(length = unit(0.03, "npc"), ends="both")) + 
   annotate("text", x=c(0.75, -0.75, 0.2, 0.2), y=c(0.2, 0.2, 0.75, -0.75), 
-           label=c("phenomic\nappears good", 
-                   "genomic\nappears good", 
-                   "phenomic\nis good", 
-                   "genomic\nis good"), 
+           label=c("phenomic\nappears better", 
+                   "genomic\nappears better", 
+                   "phenomic\nis better", 
+                   "genomic\nis better"), 
            size=5/.pt) + 
   geom_abline(intercept = 0, slope=1) + 
   geom_point(aes(x=Difference_ry, y=Difference_r, colour=Case.Study), size=0.65) + 
@@ -556,7 +574,7 @@ p9 <- ggplot(accuracy_diff) +
   ylim(-1, 1) + 
   xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
   ylab(expression(r[phenomic]-r[genomic])) + 
-  scale_colour_manual(values=c("blue", "red", "gold3")) +
+  scale_colour_manual(values=c("blue", "green3", "gold3")) +
   coord_equal(ratio=1) +
   theme_minimal_grid(font_size=7)+
   theme(
@@ -579,7 +597,8 @@ p10 <- ggplot(accuracy_diff2) +
   # xlab("prediction method") + 
   ylab(expression(r-r[y])) + 
   scale_x_continuous(breaks=c(1, 1.9), labels=c("genomic", "phenomic")) + 
-  scale_colour_manual(labels=c("Rincent et al.", "Winn et al.", "Krause et al."), values=c("blue", "red", "gold3")) + 
+  scale_colour_manual(labels=c("Rincent et al.", "Winn et al.", "Krause et al."), 
+                      values=c("blue", "green3", "gold3")) + 
   coord_fixed(ratio=3.27) +
   theme_minimal_grid(font_size=7) + 
   theme(axis.title.x = element_blank())
@@ -590,7 +609,7 @@ save_plot(paste("plot/", "p9_p10.pdf", sep=""),
           plot_grid(p9, p10+theme(legend.position="none"), legend10, nrow=1, 
                     align = "h", axis="bt",
                     rel_widths = c(1, 1, 0.3), 
-                    labels=c("a", "b")), 
+                    labels=c("A", "B")), 
           base_width = 5.6
           , base_height = 2.5
           )
