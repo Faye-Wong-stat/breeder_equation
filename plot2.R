@@ -76,7 +76,7 @@ res_i = foreach(n_g = n_gs,.combine = rbind) %do% {
 p = ggplot(res_i,aes(x=n_g,y=i_ratio)) + theme_minimal() +
   geom_line(aes(group = rel_cost,color=factor(n_p/n_g))) +
   xlab("n in genomic selection") + ylab(expression(i[p]/i[g])) +
-  scale_x_log10() + expand_limits(y=.9) + labs(color = expression(k[p]/k[g])) +
+  scale_x_log10() + expand_limits(y=.9) + labs(color = expression(n[p]/n[g])) +
   guides(color = guide_legend(nrow=1)) +
   theme_minimal_grid(font_size=7) + 
   theme(legend.position = 'bottom', 

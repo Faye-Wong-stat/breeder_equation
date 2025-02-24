@@ -8,18 +8,18 @@ data2 <- readRDS("estimate_accuracy2/accuracy_table_long.rds")
 data5 <- readRDS("estimate_accuracy5/accuracy_table_long.rds")
 data4 <- readRDS("estimate_accuracy4/accuracy_table_long.rds")
 
-data1 <- cbind(`Case Study` = "cite{rincent2018phenomic}", 
+data1 <- cbind(`Case Study` = "Rincent et al. (2018)", 
                Crop = "Poplar", 
                data1)
-data2 <- cbind(`Case Study` = "cite{rincent2018phenomic}", 
+data2 <- cbind(`Case Study` = "Rincent et al. (2018)", 
                Crop = "Wheat", 
                data2)
-data5 <- cbind(`Case Study` = "cite{winn2023phenomic}", 
+data5 <- cbind(`Case Study` = "Winn et al. (2023)", 
                Crop = "Wheat", 
                trait = "GrainYield", 
                data5)
 # colnames(data4)[1] <- "jth_fold"
-data4 <- cbind(`Case Study` = "cite{krause_hyperspectral_2019}", 
+data4 <- cbind(`Case Study` = "Krause et al. (2019)", 
                Crop = "Wheat", 
                data4)
 colnames(data4)[3] <- "trait"
@@ -206,9 +206,9 @@ save_plot(paste("plot/","accuracy.pdf", sep=""),
 
 accuracy_sum[, 6:9] <- sapply(accuracy_sum[, 6:9], FUN=function(x){round(x, digits = 3)})
 accuracy_sum$`Case Study` <- factor(accuracy_sum$`Case Study`, levels=as.factor(c(
-                                                                  "cite{rincent2018phenomic}",
-                                                                  "cite{winn2023phenomic}", 
-                                                                  "cite{krause_hyperspectral_2019}")))
+                                                                  "Rincent et al. (2018)",
+                                                                  "Winn et al. (2023)", 
+                                                                  "Krause et al. (2019)")))
 accuracy_sum$Trait <- factor(accuracy_sum$Trait, levels=as.factor(
   c("HT.ORL", "BF.ORL", "BF.SAV", "BS.ORL", "BS.SAV", "CIRC.ORL", "CIRC.SAV", "RUST.ORL", "DRY_GrainYield", 
     "DRY_HeadingDate", "IRR_GrainYield", "IRR_HeadingDate", "GrainYield", 
@@ -237,8 +237,8 @@ accuracy_wide <- data.frame(`Case Study` = rep(NA, 69),
                             Crop = rep(NA, 69), 
                             Trait = rep(NA, 69), 
                             Prediction = rep(NA, 69), 
-                            r = rep(NA, 69), 
                             r_y = rep(NA, 69), 
+                            r = rep(NA, 69), 
                             h2 = rep(NA, 69))
 
 for (i in 1:69){
@@ -421,21 +421,25 @@ save_plot(paste("plot/", "p1_p3.pdf", sep=""),
 
 
 accuracy_sum <- readRDS("plot/accuracy_sum.rds")
+accuracy_sum <- accuracy_sum[order(accuracy_sum$`Case Study`, 
+                                   accuracy_sum$Trait, 
+                                   accuracy_sum$adjustment, 
+                                   accuracy_sum$prediction_method), ]
 accuracy_sum[, 1:5] <- sapply(accuracy_sum[, 1:5], FUN=function(x){as.character(x)})
 
 
 
 dim(accuracy_sum)
 # [1] 138   9
-dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{rincent2018phenomic}" &
+dim(accuracy_sum[accuracy_sum$`Case Study` == "Rincent et al. (2018)" &
                    accuracy_sum$Crop == "Poplar", ])
 # [1] 32  9
-dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{rincent2018phenomic}" &
+dim(accuracy_sum[accuracy_sum$`Case Study` == "Rincent et al. (2018)" &
                    accuracy_sum$Crop == "Wheat", ])
 # [1] 24  9
-dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{winn2023phenomic}", ])
+dim(accuracy_sum[accuracy_sum$`Case Study` == "Winn et al. (2023)", ])
 # [1] 6 9
-dim(accuracy_sum[accuracy_sum$`Case Study` == "cite{krause_hyperspectral_2019}", ])
+dim(accuracy_sum[accuracy_sum$`Case Study` == "Krause et al. (2019)", ])
 # [1] 76  9
 138-32-76
 # 30
@@ -507,9 +511,12 @@ sum(accuracy_diff$Difference_ry < 0 & accuracy_diff$Difference_r < 0)
 saveRDS(accuracy_diff, "plot/accuracy_diff.rds")
 accuracy_diff <- readRDS("plot/accuracy_diff.rds")
 accuracy_diff$Case.Study <- factor(accuracy_diff$Case.Study, levels = as.factor(c(
-                                                                  "cite{rincent2018phenomic}",
-                                                                  "cite{winn2023phenomic}", 
-                                                                  "cite{krause_hyperspectral_2019}")))
+                                                                  "Rincent et al. (2018)",
+                                                                  "Krause et al. (2019)", 
+                                                                  "Winn et al. (2023)")))
+accuracy_diff <- accuracy_diff[order(accuracy_diff$Case.Study, 
+                                     accuracy_diff$Crop, 
+                                     accuracy_diff$Trait), ]
 
 
 
@@ -534,21 +541,21 @@ accuracy_diff2[accuracy_diff2$Prediction %in% c("phenomic-grain", "phenomic-leaf
                                                 "phenomic-fixed", "phenomic-mixed"), 
                "Prediction"] <- "phenomic"
 accuracy_diff2$Case.Study <- factor(accuracy_diff2$Case.Study, levels = as.factor(c(
-                                                                  "cite{rincent2018phenomic}",
-                                                                  "cite{winn2023phenomic}", 
-                                                                  "cite{krause_hyperspectral_2019}")))
+                                                                  "Rincent et al. (2018)",
+                                                                  "Krause et al. (2019)", 
+                                                                  "Winn et al. (2023)")))
 accuracy_diff2$Prediction <- factor(accuracy_diff2$Prediction, levels=as.factor(c(
   "genomic", "phenomic"
 )))
 accuracy_diff2$interaction <- interaction(accuracy_diff2$Case.Study, accuracy_diff2$Prediction, sep="-")
 levels(accuracy_diff2$interaction)
 accuracy_diff2$x_pos <- sapply(accuracy_diff2$interaction, FUN=function(x) {
-  case_when(x=="cite{rincent2018phenomic}-genomic" ~ 0.8, 
-            x=="cite{winn2023phenomic}-genomic" ~ 1, 
-            x=="cite{krause_hyperspectral_2019}-genomic" ~ 1.2, 
-            x=="cite{rincent2018phenomic}-phenomic" ~ 1.7, 
-            x=="cite{winn2023phenomic}-phenomic" ~ 1.9, 
-            x=="cite{krause_hyperspectral_2019}-phenomic" ~ 2.1)
+  case_when(x=="Rincent et al. (2018)-genomic" ~ 0.8, 
+            x=="Krause et al. (2019)-genomic" ~ 1, 
+            x=="Winn et al. (2023)-genomic" ~ 1.2, 
+            x=="Rincent et al. (2018)-phenomic" ~ 1.7, 
+            x=="Krause et al. (2019)-phenomic" ~ 1.9, 
+            x=="Winn et al. (2023)-phenomic" ~ 2.1)
 })
 
 saveRDS(accuracy_diff2, "plot/accuracy_diff2.rds")
@@ -574,14 +581,15 @@ p9 <- ggplot(accuracy_diff) +
   ylim(-1, 1) + 
   xlab(expression(r["y, phenomic"]-r["y, genomic"])) + 
   ylab(expression(r[phenomic]-r[genomic])) + 
-  scale_colour_manual(values=c("blue", "green3", "gold3")) +
+  scale_colour_manual(values=c("blue", "gold3", "green3")) +
   coord_equal(ratio=1) +
   theme_minimal_grid(font_size=7)+
   theme(
     # axis.title.x = element_blank(),
     # axis.text.x = element_text(angle = 60, vjust = 0.6),
     # axis.ticks.x = element_blank(), 
-    legend.position="none") 
+    legend.position="none"
+    ) 
 # save_plot(paste("plot/", "p9.pdf", sep=""),
 #           plot_grid(p9))
 
@@ -597,11 +605,14 @@ p10 <- ggplot(accuracy_diff2) +
   # xlab("prediction method") + 
   ylab(expression(r-r[y])) + 
   scale_x_continuous(breaks=c(1, 1.9), labels=c("genomic", "phenomic")) + 
-  scale_colour_manual(labels=c("Rincent et al.", "Winn et al.", "Krause et al."), 
-                      values=c("blue", "green3", "gold3")) + 
+  scale_colour_manual(labels=c("Rincent et al.", "Krause et al.", "Winn et al."), 
+                      values=c("blue", "gold3", "green3")) + 
   coord_fixed(ratio=3.27) +
   theme_minimal_grid(font_size=7) + 
-  theme(axis.title.x = element_blank())
+  theme(panel.grid.major.x = element_blank(), 
+        axis.title.x = element_blank())
+# save_plot(paste("plot/", "p10.pdf", sep=""),
+#           plot_grid(p10))
 
 legend10 <- get_legend(p10)
 
