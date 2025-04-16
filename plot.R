@@ -228,10 +228,28 @@ accuracy_sum <- accuracy_sum[order(accuracy_sum$`Case Study`,
                                    accuracy_sum$adjustment), ]
 
 saveRDS(accuracy_sum, "plot/accuracy_sum.rds")
+
+
+
+
+
 accuracy_sum <- readRDS("plot/accuracy_sum.rds")
-accuracy_sum[, 1:5] <- sapply(accuracy_sum[, 1:5], FUN=function(x){as.character(x)})
-
-
+accuracy_sum <- sapply(accuracy_sum, FUN=function(x){as.character(x)})
+accuracy_sum[, 6:9] <- sapply(accuracy_sum[, 6:9], FUN=function(x){
+  for (i in 1:length(x)){
+    if (nchar(x[i]) == 4){
+      x[i] = paste(x[i], "0", sep="")
+    } else if (nchar(x[i]) == 3){
+      x[i] = paste(x[i], "00", sep="")
+    }
+  }
+  return(x)
+})
+table(sapply(accuracy_sum[, 6:9], FUN=function(x){
+  sapply(x, FUN=function(y){
+    nchar(y)
+  })
+}))
 
 accuracy_wide <- data.frame(`Case Study` = rep(NA, 69),
                             Crop = rep(NA, 69), 
@@ -272,7 +290,7 @@ colnames(accuracy_wide)[1] <- "Case Study"
 
 saveRDS(accuracy_wide, "plot/accuracy_wide.rds")
 accuracy_wide <- readRDS("plot/accuracy_wide.rds")
-write.csv(accuracy_wide, "plot/accuracy_wide.csv", row.names = F, quote = F)
+write.csv(accuracy_wide, "plot/.csv", row.names = F, quote = F)
 
 
 
@@ -620,7 +638,8 @@ save_plot(paste("plot/", "p9_p10.pdf", sep=""),
           plot_grid(p9, p10+theme(legend.position="none"), legend10, nrow=1, 
                     align = "h", axis="bt",
                     rel_widths = c(1, 1, 0.3), 
-                    labels=c("A", "B")), 
+                    labels=c("A", "B"), 
+                    label_size=9), 
           base_width = 5.6
           , base_height = 2.5
           )

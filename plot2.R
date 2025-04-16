@@ -53,7 +53,9 @@ legend2 <- get_legend(p2)
 save_plot(paste("plot2/","bias.pdf", sep=""), 
           plot_grid(p1, p2 + theme(legend.position = "none"), 
                     legend2,
-                    nrow=3, align = "h", axis="tb", labels=c("A", "B"), 
+                    nrow=3, align = "h", axis="tb", 
+                    labels=c("A", "B"), 
+                    label_size=9, 
                     rel_heights = c(1, 1, 0.1)), 
           base_width = 5.6)
 
